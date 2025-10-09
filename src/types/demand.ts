@@ -3,6 +3,28 @@ export type DemandPriority = "low" | "medium" | "high";
 export type DemandStatus = "todo" | "in-progress" | "testing" | "done";
 export type SystemType = "toqweb" | "gmax" | "toqblend" | "t5" | "t10" | "ecopdv" | "toqped" | "toqvenda";
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  type: "doc" | "image" | "link";
+  url: string;
+  uploadedAt: Date;
+}
+
+export interface TimelineEvent {
+  id: string;
+  type: "created" | "status_change" | "comment" | "assignment" | "attachment";
+  description: string;
+  user: string;
+  timestamp: Date;
+}
+
 export interface Demand {
   id: string;
   title: string;
@@ -14,4 +36,11 @@ export interface Demand {
   responsible: string;
   createdAt: Date;
   updatedAt: Date;
+  dueDate?: Date;
+  storyPoints?: number;
+  sprint?: string;
+  checklist?: ChecklistItem[];
+  attachments?: Attachment[];
+  timeline?: TimelineEvent[];
+  tags?: string[];
 }

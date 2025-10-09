@@ -12,6 +12,40 @@ export const mockDemands: Demand[] = [
     responsible: "João Silva",
     createdAt: new Date("2025-10-01"),
     updatedAt: new Date("2025-10-07"),
+    sprint: "Sprint 23",
+    storyPoints: 8,
+    dueDate: new Date("2025-10-15"),
+    tags: ["autenticação", "oauth"],
+    checklist: [
+      { id: "1", text: "Configurar OAuth no Google Console", completed: true },
+      { id: "2", text: "Implementar callback de autenticação", completed: true },
+      { id: "3", text: "Testar fluxo completo", completed: false },
+    ],
+    attachments: [
+      {
+        id: "1",
+        name: "Documentação OAuth Google",
+        type: "link",
+        url: "https://developers.google.com/identity/protocols/oauth2",
+        uploadedAt: new Date("2025-10-01"),
+      },
+    ],
+    timeline: [
+      {
+        id: "1",
+        type: "created",
+        description: "Demanda criada",
+        user: "João Silva",
+        timestamp: new Date("2025-10-01T09:00:00"),
+      },
+      {
+        id: "2",
+        type: "status_change",
+        description: "Status alterado para Em Andamento",
+        user: "João Silva",
+        timestamp: new Date("2025-10-02T10:30:00"),
+      },
+    ],
   },
   {
     id: "2",
@@ -24,6 +58,18 @@ export const mockDemands: Demand[] = [
     responsible: "Maria Santos",
     createdAt: new Date("2025-10-05"),
     updatedAt: new Date("2025-10-05"),
+    sprint: "Sprint 23",
+    storyPoints: 5,
+    tags: ["crítico", "vendas"],
+    timeline: [
+      {
+        id: "1",
+        type: "created",
+        description: "Bug reportado",
+        user: "Maria Santos",
+        timestamp: new Date("2025-10-05T14:00:00"),
+      },
+    ],
   },
   {
     id: "3",
@@ -36,6 +82,24 @@ export const mockDemands: Demand[] = [
     responsible: "Pedro Costa",
     createdAt: new Date("2025-09-28"),
     updatedAt: new Date("2025-10-06"),
+    sprint: "Sprint 22",
+    storyPoints: 3,
+    timeline: [
+      {
+        id: "1",
+        type: "created",
+        description: "Demanda criada",
+        user: "Pedro Costa",
+        timestamp: new Date("2025-09-28T11:00:00"),
+      },
+      {
+        id: "2",
+        type: "status_change",
+        description: "Status alterado para Em Teste",
+        user: "Pedro Costa",
+        timestamp: new Date("2025-10-06T16:00:00"),
+      },
+    ],
   },
   {
     id: "4",
@@ -48,6 +112,9 @@ export const mockDemands: Demand[] = [
     responsible: "Ana Oliveira",
     createdAt: new Date("2025-10-03"),
     updatedAt: new Date("2025-10-03"),
+    sprint: "Sprint 24",
+    storyPoints: 5,
+    tags: ["relatórios", "export"],
   },
   {
     id: "5",
@@ -60,6 +127,9 @@ export const mockDemands: Demand[] = [
     responsible: "João Silva",
     createdAt: new Date("2025-10-06"),
     updatedAt: new Date("2025-10-07"),
+    sprint: "Sprint 23",
+    storyPoints: 3,
+    tags: ["erro-500", "configurações"],
   },
   {
     id: "6",
@@ -72,6 +142,9 @@ export const mockDemands: Demand[] = [
     responsible: "Maria Santos",
     createdAt: new Date("2025-09-30"),
     updatedAt: new Date("2025-09-30"),
+    sprint: "Sprint 24",
+    storyPoints: 8,
+    tags: ["performance", "otimização"],
   },
   {
     id: "7",
@@ -84,6 +157,26 @@ export const mockDemands: Demand[] = [
     responsible: "Pedro Costa",
     createdAt: new Date("2025-09-20"),
     updatedAt: new Date("2025-10-04"),
+    sprint: "Sprint 22",
+    storyPoints: 13,
+    dueDate: new Date("2025-10-05"),
+    tags: ["pagamento", "pix"],
+    timeline: [
+      {
+        id: "1",
+        type: "created",
+        description: "Demanda criada",
+        user: "Pedro Costa",
+        timestamp: new Date("2025-09-20T09:00:00"),
+      },
+      {
+        id: "2",
+        type: "status_change",
+        description: "Status alterado para Concluído",
+        user: "Pedro Costa",
+        timestamp: new Date("2025-10-04T17:00:00"),
+      },
+    ],
   },
   {
     id: "8",
@@ -96,5 +189,8 @@ export const mockDemands: Demand[] = [
     responsible: "Ana Oliveira",
     createdAt: new Date("2025-10-02"),
     updatedAt: new Date("2025-10-06"),
+    sprint: "Sprint 23",
+    storyPoints: 2,
+    tags: ["mobile", "responsivo"],
   },
 ];

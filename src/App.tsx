@@ -7,6 +7,9 @@ import { Navigation } from "./components/Navigation";
 import Dashboard from "./pages/Dashboard";
 import DemandList from "./pages/DemandList";
 import KanbanBoard from "./pages/KanbanBoard";
+import TableView from "./pages/TableView";
+import CalendarView from "./pages/CalendarView";
+import GanttView from "./pages/GanttView";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +26,9 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/demands" element={<DemandList />} />
           <Route path="/kanban" element={<KanbanBoard />} />
+          <Route path="/table" element={<TableView />} />
+          <Route path="/calendar" element={<CalendarView />} />
+          <Route path="/gantt" element={<GanttView />} />
           <Route path="/reports" element={<Reports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { DemandCard } from "@/components/DemandCard";
+import { DemandDialog } from "@/components/DemandDialog";
 import { mockDemands } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search } from "lucide-react";
-import { DemandPriority, DemandStatus, DemandType } from "@/types/demand";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, LayoutGrid, Table2, Calendar as CalendarIcon, GanttChartSquare } from "lucide-react";
+import { DemandPriority, DemandStatus, DemandType, Demand } from "@/types/demand";
+import { useNavigate } from "react-router-dom";
 
 const DemandList = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
+
+  const handleSaveDemand = (demand: Partial<Demand>) => {
+    console.log("Salvando demanda:", demand);
+    // Aqui você implementaria a lógica de salvar
+  };
 
   const filteredDemands = mockDemands.filter((demand) => {
     const matchesSearch =
@@ -29,17 +38,38 @@ const DemandList = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Lista de Demandas</h1>
+            <h1 className="text-4xl font-bold mb-2">Gerenciar Demandas</h1>
             <p className="text-muted-foreground">
-              Gerencie todas as suas demandas em um só lugar
+              Visualize suas demandas de diferentes formas
             </p>
           </div>
-          <Button size="lg" className="gap-2">
-            <Plus className="h-5 w-5" />
-            Nova Demanda
-          </Button>
+          <DemandDialog onSave={handleSaveDemand} />
+        </div>
+
+        {/* View Selector */}
+        <div className="mb-6">
+          <Tabs defaultValue="grid" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+              <TabsTrigger value="grid" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline">Cards</span>
+              </TabsTrigger>
+              <TabsTrigger value="table" className="gap-2" onClick={() => navigate("/table")}>
+                <Table2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Tabela</span>
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-2" onClick={() => navigate("/calendar")}>
+                <CalendarIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Calendário</span>
+              </TabsTrigger>
+              <TabsTrigger value="gantt" className="gap-2" onClick={() => navigate("/gantt")}>
+                <GanttChartSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Gantt</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Filters */}
