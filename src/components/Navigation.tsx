@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react";
 import { useAuth } from "@/integrations/supabase/auth";
+import { UserNav } from "./UserNav"; // Importar UserNav
 
 const navItems = [
   {
@@ -38,9 +39,9 @@ const navItems = [
 
 export const Navigation = () => {
   const location = useLocation();
-  const { session, isLoading } = useAuth(); // Ainda precisamos do session para saber se o usuário está logado
+  const { session, isLoading } = useAuth();
 
-  if (isLoading || !session) { // Se não estiver carregando ou não houver sessão, não renderiza a navegação
+  if (isLoading || !session) {
     return null;
   }
 
@@ -72,6 +73,7 @@ export const Navigation = () => {
                 </Link>
               );
             })}
+            <UserNav /> {/* Adicionado o componente UserNav aqui */}
           </div>
         </div>
       </div>
