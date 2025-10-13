@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserProfile } from "@/pages/UserManagement"; // Importar a interface UserProfile
 
 interface EditUserDialogProps {
@@ -17,6 +18,7 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     avatar_url: user.avatar_url || "",
+    role: user.role || "user", // Adicionado role
   });
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         avatar_url: user.avatar_url || "",
+        role: user.role || "user",
       });
     }
   }, [user, open]);
@@ -41,6 +44,17 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
           <DialogTitle>Editar Perfil do Usuário</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="email" className="text-right">
+              E-mail
+            </Label>
+            <Input
+              id="email"
+              value={user.email || ""}
+              readOnly // E-mail é somente leitura
+              className="col-span-3"
+            />
+          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="first_name" className="text-right">
               Primeiro Nome
@@ -73,6 +87,23 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
               onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
               className="col-span-3"
             />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="role" className="text-right">
+              Papel
+            </Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value) => setFormData({ ...formData, role: value })}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Selecionar Papel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">Usuário</SelectItem>
+                <SelectItem value="admin">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>

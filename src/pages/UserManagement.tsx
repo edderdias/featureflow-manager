@@ -24,16 +24,15 @@ export interface UserProfile {
 
 const UserManagement = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth(); // userRole não é mais necessário para controle de acesso na UI
+  const { user } = useAuth();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | undefined>(undefined);
 
   const fetchUsers = async () => {
-    if (!user) return []; // Ainda precisa de um usuário autenticado para buscar dados
+    if (!user) return [];
     
-    // Call the admin-actions Edge Function to list users
     const { data, error } = await supabase.functions.invoke("admin-actions", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -46,24 +45,22 @@ const UserManagement = () => {
   const { data: users, isLoading, error } = useQuery<UserProfile[], Error>({
     queryKey: ["users", user?.id],
     queryFn: fetchUsers,
-    enabled: !!user, // Habilitado para qualquer usuário autenticado
+    enabled: !!user,
   });
 
   const inviteUserMutation = useMutation({
     mutationFn: async (email: string) => {
       setIsInviting(true);
-      const { data, error } = await supabase.functions.invoke("invite-user", {
-        body: JSON.stringify({ email }),
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (error) throw error;
-      return data;
+      // A função invite-user foi removida, então esta mutação não será mais usada.
+      // Mantendo o esqueleto para referência ou caso seja reintroduzida.
+      // Por enquanto, esta funcionalidade não estará disponível.
+      toast.error("A funcionalidade de convidar usuário está desabilitada.");
+      throw new Error("Funcionalidade de convidar usuário desabilitada.");
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("Convite enviado com sucesso!");
       setInviteEmail("");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (err) => {
       toast.error(`Erro ao enviar convite: ${err.message}`);
@@ -73,34 +70,16 @@ const UserManagement = () => {
     }
   });
 
-  const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      if (!user) throw new Error("Usuário não autenticado");
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ role })
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success("Papel do usuário atualizado com sucesso!");
-    },
-    onError: (err) => {
-      toast.error(`Erro ao atualizar papel: ${err.message}`);
-    },
-  });
+  // Removida a mutação updateUserRoleMutation, pois a edição de papel será feita via updateUserProfileMutation
+  // Removida a função handleRoleChange
 
   const updateUserProfileMutation = useMutation({
     mutationFn: async (updatedUser: Partial<UserProfile>) => {
       if (!user) throw new Error("Usuário não autenticado");
-      const { id, first_name, last_name, avatar_url } = updatedUser;
+      const { id, first_name, last_name, avatar_url, role } = updatedUser; // Incluído 'role'
       const { data, error } = await supabase
         .from("profiles")
-        .update({ first_name, last_name, avatar_url })
+        .update({ first_name, last_name, avatar_url, role }) // Atualiza 'role'
         .eq("id", id)
         .select()
         .single();
@@ -121,7 +100,6 @@ const UserManagement = () => {
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (!user) throw new Error("Usuário não autenticado");
-      // Call the admin-actions Edge Function to delete the user
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "DELETE",
         body: JSON.stringify({ userId }),
@@ -144,10 +122,6 @@ const UserManagement = () => {
     if (inviteEmail.trim()) {
       inviteUserMutation.mutate(inviteEmail.trim());
     }
-  };
-
-  const handleRoleChange = (userId: string, newRole: string) => {
-    updateUserRoleMutation.mutate({ id: userId, role: newRole });
   };
 
   const handleEditUser = (userToEdit: UserProfile) => {
@@ -175,44 +149,18 @@ const UserManagement = () => {
     );
   }
 
-  // Removido o bloco de acesso negado para permitir que qualquer usuário autenticado veja a página.
-  // As permissões para as ações (convidar, editar papel, excluir) serão controladas pelas funções Edge e RLS.
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Gerenciamento de Usuários</h1>
           <p className="text-muted-foreground">
-            Convide novos usuários e gerencie os papéis e perfis existentes
+            Gerencie os perfis e papéis dos usuários existentes
           </p>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Convidar Novo Usuário</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="E-mail do novo usuário"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
-                disabled={isInviting}
-              />
-              <Button onClick={handleInviteUser} disabled={isInviting}>
-                {isInviting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Convidar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* O card de convite de usuário foi removido, pois a função Edge 'invite-user' foi excluída */}
+        {/* Se a funcionalidade de convite for reintroduzida, este card pode ser adicionado novamente */}
 
         <Card>
           <CardHeader>
@@ -237,26 +185,14 @@ const UserManagement = () => {
                       </TableCell>
                       <TableCell>{profile.email || "N/A"}</TableCell>
                       <TableCell>
-                        <Select
-                          value={profile.role}
-                          onValueChange={(newRole) => handleRoleChange(profile.id, newRole)}
-                          disabled={profile.id === user?.id}
-                        >
-                          <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="Selecionar Papel" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">Usuário</SelectItem>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Badge variant="secondary">{profile.role}</Badge> {/* Exibe o papel como Badge */}
                       </TableCell>
                       <TableCell className="text-right flex gap-2 justify-end">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(profile)}
-                          disabled={profile.id === user?.id}
+                          disabled={profile.id === user?.id} // Impede que o usuário edite a si mesmo
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -265,7 +201,7 @@ const UserManagement = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={profile.id === user?.id}
+                              disabled={profile.id === user?.id} // Impede que o usuário se exclua
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
