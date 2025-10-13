@@ -26,7 +26,9 @@ export interface UserProfile {
 const UserManagement = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | undefined>(undefined);
@@ -50,25 +52,28 @@ const UserManagement = () => {
   });
 
   const inviteUserMutation = useMutation({
-    mutationFn: async (email: string) => {
-      setIsInviting(true);
-      // A função invite-user foi removida, então esta mutação não será mais usada.
-      // Mantendo o esqueleto para referência ou caso seja reintroduzida.
-      // Por enquanto, esta funcionalidade não estará disponível.
-      toast.error("A funcionalidade de convidar usuário está desabilitada.");
-      throw new Error("Funcionalidade de convidar usuário desabilitada.");
+    mutationFn: async ({ email, first_name, last_name }: { email: string; first_name: string; last_name: string }) => {
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data, error } = await supabase.functions.invoke("admin-actions", {
+        method: "POST",
+        body: JSON.stringify({ email, first_name, last_name }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast.success("Convite enviado com sucesso!");
-      setInviteEmail("");
+      setNewFirstName("");
+      setNewLastName("");
+      setNewEmail("");
     },
     onError: (err) => {
       toast.error(`Erro ao enviar convite: ${err.message}`);
     },
-    onSettled: () => {
-      setIsInviting(false);
-    }
   });
 
   const updateUserProfileMutation = useMutation({
@@ -118,8 +123,14 @@ const UserManagement = () => {
   });
 
   const handleInviteUser = () => {
-    if (inviteEmail.trim()) {
-      inviteUserMutation.mutate(inviteEmail.trim());
+    if (newEmail.trim()) {
+      inviteUserMutation.mutate({
+        email: newEmail.trim(),
+        first_name: newFirstName.trim(),
+        last_name: newLastName.trim(),
+      });
+    } else {
+      toast.error("O e-mail é obrigatório para o convite.");
     }
   };
 
@@ -157,6 +168,44 @@ const UserManagement = () => {
             Gerencie os perfis e papéis dos usuários existentes
           </p>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Convidar Novo Usuário</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <Input
+                placeholder="Primeiro Nome"
+                value={newFirstName}
+                onChange={(e) => setNewFirstName(e.target.value)}
+              />
+              <Input
+                placeholder="Sobrenome"
+                value={newLastName}
+                onChange={(e) => setNewLastName(e.target.value)}
+              />
+              <Input
+                type="email"
+                placeholder="E-mail do novo usuário"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleInviteUser()}
+              />
+            </div>
+            <Button onClick={handleInviteUser} disabled={inviteUserMutation.isPending}>
+              {inviteUserMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" /> Convidar Usuário
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

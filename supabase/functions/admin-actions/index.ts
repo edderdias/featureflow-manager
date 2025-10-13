@@ -186,6 +186,38 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
+    } else if (req.method === "POST") { // Novo método POST para convidar usuários
+      const { email, first_name, last_name } = await req.json();
+
+      if (!email) {
+        return new Response(JSON.stringify({ error: "Email is required for invitation" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+
+      const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(
+        email,
+        {
+          data: {
+            first_name: first_name || null,
+            last_name: last_name || null,
+          },
+        }
+      );
+
+      if (inviteError) {
+        console.error("Edge Function Error: Error inviting user:", inviteError);
+        return new Response(JSON.stringify({ error: inviteError.message }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        });
+      }
+
+      return new Response(JSON.stringify({ message: "Invitation sent successfully", user: invitedUser.user }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
