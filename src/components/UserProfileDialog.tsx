@@ -29,13 +29,18 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
           .eq("id", user.id)
           .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // PGRST116 é o código de erro para "No rows found" com .single()
           console.error("Error fetching user profile:", error);
           toast.error("Erro ao carregar seu perfil.");
         } else if (data) {
           setFirstName(data.first_name || "");
           setLastName(data.last_name || "");
           setAvatarUrl(data.avatar_url || "");
+        } else {
+          // Se nenhum perfil for encontrado (data é null), inicializa com valores vazios
+          setFirstName("");
+          setLastName("");
+          setAvatarUrl("");
         }
       }
     };
