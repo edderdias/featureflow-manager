@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react"; // Importando o ícone Settings
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react";
 import { useAuth } from "@/integrations/supabase/auth";
 
 const navItems = [
@@ -41,10 +41,10 @@ const navItems = [
     adminOnly: true,
   },
   {
-    title: "Gerenciar Perfil", // Novo item de navegação
+    title: "Gerenciar Perfil",
     href: "/profile",
-    icon: Settings, // Ícone para configurações/perfil
-    adminOnly: true, // Apenas administradores podem ver
+    icon: Settings,
+    adminOnly: false, // Alterado para false para ser visível a todos os usuários
   },
 ];
 
