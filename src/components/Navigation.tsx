@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users } from "lucide-react"; // Importando o ícone Users
-import { useAuth } from "@/integrations/supabase/auth"; // Importando useAuth para verificar o papel do usuário
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react"; // Importando o ícone Settings
+import { useAuth } from "@/integrations/supabase/auth";
 
 const navItems = [
   {
@@ -35,9 +35,15 @@ const navItems = [
     adminOnly: false,
   },
   {
-    title: "Gerenciar Usuários", // Novo item de navegação
+    title: "Gerenciar Usuários",
     href: "/users",
-    icon: Users, // Ícone para usuários
+    icon: Users,
+    adminOnly: true,
+  },
+  {
+    title: "Gerenciar Perfil", // Novo item de navegação
+    href: "/profile",
+    icon: Settings, // Ícone para configurações/perfil
     adminOnly: true, // Apenas administradores podem ver
   },
 ];
@@ -61,7 +67,6 @@ export const Navigation = () => {
           
           <div className="flex items-center gap-1">
             {navItems.map((item) => {
-              // Renderiza o item apenas se não for adminOnly ou se o usuário for admin
               if (item.adminOnly && userRole !== "admin") {
                 return null;
               }

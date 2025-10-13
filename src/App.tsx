@@ -14,9 +14,10 @@ import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import TagManagement from "./pages/TagManagement";
-import UserManagement from "./pages/UserManagement"; // Importando a nova página de gerenciamento de usuários
+import UserManagement from "./pages/UserManagement";
+import Profile from "./pages/Profile"; // Importando a nova página de perfil
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
-import AdminProtectedRoute from "./components/AdminProtectedRoute"; // Importando o AdminProtectedRoute
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -125,9 +126,17 @@ const AppRoutes = () => {
         <Route
           path="/users"
           element={
-            <AdminProtectedRoute> {/* Protegendo a rota de gerenciamento de usuários */}
+            <AdminProtectedRoute>
               <UserManagement />
             </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile" {/* Nova rota para o perfil */}
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<NotFound />} />
