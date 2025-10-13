@@ -102,6 +102,7 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
               <SelectContent>
                 <SelectItem value="user">Usuário</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="technician">Técnico</SelectItem> {/* Nova opção adicionada */}
               </SelectContent>
             </Select>
           </div>
