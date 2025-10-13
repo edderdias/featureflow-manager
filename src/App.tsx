@@ -131,8 +131,9 @@ const AppRoutes = () => {
             </AdminProtectedRoute>
           }
         />
+        {/* Nova rota para o perfil */}
         <Route
-          path="/profile" {/* Nova rota para o perfil */}
+          path="/profile"
           element={
             <ProtectedRoute>
               <Profile />
