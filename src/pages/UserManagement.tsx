@@ -6,17 +6,20 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Mail, Shield, Loader2 } from "lucide-react";
+import { Plus, User, Mail, Shield, Loader2, Edit, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { EditUserDialog } from "@/components/EditUserDialog"; // Importar o novo componente de diálogo
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
+  email: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
   role: string;
-  email?: string; // Adicionado para exibir o e-mail
+  created_at: string;
 }
 
 const UserManagement = () => {
@@ -24,51 +27,31 @@ const UserManagement = () => {
   const { user, userRole } = useAuth();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | undefined>(undefined);
 
   const fetchUsers = async () => {
     if (userRole !== "admin") return [];
     
-    // Fetch profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name, avatar_url, role");
-
-    if (profilesError) throw profilesError;
-
-    // Fetch auth.users to get emails (only accessible with service role, so we'll simulate or use a function)
-    // For security, direct access to auth.users from client is restricted.
-    // We'll assume for now that the email can be derived or is not strictly needed for all users,
-    // or that a separate edge function would provide it securely.
-    // For this example, we'll just show the profile data.
-    // If emails are critical, an admin-only edge function would be needed to fetch them.
-
-    // We cannot directly list auth.users from the client-side with the anon key.
-    // A more robust solution would involve another Edge Function to fetch user emails securely for admins.
-    // For simplicity in this example, we'll just show profile data and indicate email as N/A if not available.
-    // If you need emails, you'd extend the 'invite-user' Edge Function or create a new one to list users.
-
-    const usersWithEmails = profiles.map(profile => {
-      // In a real app, you'd fetch emails via an admin-protected Edge Function
-      // For now, we'll just show the profile data.
-      return {
-        ...profile,
-        email: "N/A", // Placeholder, as client-side anon key cannot list auth.users emails
-      };
+    // Call the admin-actions Edge Function to list users
+    const { data, error } = await supabase.functions.invoke("admin-actions", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
     });
 
-    return usersWithEmails as UserProfile[];
+    if (error) throw error;
+    return data as UserProfile[];
   };
 
   const { data: users, isLoading, error } = useQuery<UserProfile[], Error>({
     queryKey: ["users", user?.id, userRole],
     queryFn: fetchUsers,
-    enabled: userRole === "admin", // Only fetch if current user is admin
+    enabled: userRole === "admin",
   });
 
   const inviteUserMutation = useMutation({
     mutationFn: async (email: string) => {
       setIsInviting(true);
-      // Call the Edge Function to invite the user
       const { data, error } = await supabase.functions.invoke("invite-user", {
         body: JSON.stringify({ email }),
         headers: { "Content-Type": "application/json" },
@@ -80,7 +63,7 @@ const UserManagement = () => {
     onSuccess: () => {
       toast.success("Convite enviado com sucesso!");
       setInviteEmail("");
-      queryClient.invalidateQueries({ queryKey: ["users"] }); // Invalida o cache para recarregar a lista de usuários
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: (err) => {
       toast.error(`Erro ao enviar convite: ${err.message}`);
@@ -97,10 +80,6 @@ const UserManagement = () => {
         .from("profiles")
         .update({ role })
         .eq("id", id)
-        // RLS will ensure only admins can update others.
-        // The `eq("user_id", user.id)` is not needed here because the RLS policy
-        // "Admins can update other profiles" already checks `auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin')`.
-        // Removing `eq("user_id", user.id)` to allow admin to update any profile, not just their own.
         .select()
         .single();
       if (error) throw error;
@@ -115,6 +94,52 @@ const UserManagement = () => {
     },
   });
 
+  const updateUserProfileMutation = useMutation({
+    mutationFn: async (updatedUser: Partial<UserProfile>) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      const { id, first_name, last_name, avatar_url } = updatedUser;
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ first_name, last_name, avatar_url })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Perfil do usuário atualizado com sucesso!");
+      setIsEditDialogOpen(false);
+      setEditingUser(undefined);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao atualizar perfil: ${err.message}`);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      // Call the admin-actions Edge Function to delete the user
+      const { data, error } = await supabase.functions.invoke("admin-actions", {
+        method: "DELETE",
+        body: JSON.stringify({ userId }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Usuário excluído com sucesso!");
+    },
+    onError: (err) => {
+      toast.error(`Erro ao excluir usuário: ${err.message}`);
+    },
+  });
+
   const handleInviteUser = () => {
     if (inviteEmail.trim()) {
       inviteUserMutation.mutate(inviteEmail.trim());
@@ -123,6 +148,15 @@ const UserManagement = () => {
 
   const handleRoleChange = (userId: string, newRole: string) => {
     updateUserRoleMutation.mutate({ id: userId, role: newRole });
+  };
+
+  const handleEditUser = (userToEdit: UserProfile) => {
+    setEditingUser(userToEdit);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    deleteUserMutation.mutate(userId);
   };
 
   if (isLoading) {
@@ -155,7 +189,7 @@ const UserManagement = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Gerenciamento de Usuários</h1>
           <p className="text-muted-foreground">
-            Convide novos usuários e gerencie os papéis existentes
+            Convide novos usuários e gerencie os papéis e perfis existentes
           </p>
         </div>
 
@@ -206,12 +240,12 @@ const UserManagement = () => {
                       <TableCell className="font-medium">
                         {profile.first_name || profile.last_name ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : "Usuário sem nome"}
                       </TableCell>
-                      <TableCell>{profile.email}</TableCell>
+                      <TableCell>{profile.email || "N/A"}</TableCell>
                       <TableCell>
                         <Select
                           value={profile.role}
                           onValueChange={(newRole) => handleRoleChange(profile.id, newRole)}
-                          disabled={profile.id === user?.id} // Não permite mudar o próprio papel
+                          disabled={profile.id === user?.id}
                         >
                           <SelectTrigger className="w-[120px]">
                             <SelectValue placeholder="Selecionar Papel" />
@@ -222,8 +256,41 @@ const UserManagement = () => {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="text-right">
-                        {/* Futuras ações como remover usuário */}
+                      <TableCell className="text-right flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(profile)}
+                          disabled={profile.id === user?.id} // Não permite editar o próprio perfil por aqui
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={profile.id === user?.id} // Não permite excluir o próprio usuário
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o usuário
+                                e removerá seus dados de nossos servidores.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteUser(profile.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -234,6 +301,15 @@ const UserManagement = () => {
             )}
           </CardContent>
         </Card>
+
+        {editingUser && (
+          <EditUserDialog
+            user={editingUser}
+            onSave={updateUserProfileMutation.mutate}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+          />
+        )}
       </div>
     </div>
   );
