@@ -184,7 +184,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   onValueChange={(value) => setFormData({ ...formData, type: value as DemandType })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="feature">Novo Recurso</SelectItem>
@@ -201,7 +201,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   onValueChange={(value) => setFormData({ ...formData, priority: value as DemandPriority })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione a prioridade" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Baixa</SelectItem>
@@ -220,7 +220,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   onValueChange={(value) => setFormData({ ...formData, status: value as DemandStatus })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todo">A Fazer</SelectItem>
@@ -238,7 +238,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   onValueChange={(value) => setFormData({ ...formData, system: value as SystemType })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o sistema" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="toqweb">TOQWEB</SelectItem>
@@ -331,7 +331,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               <Input
                 value={newChecklistItem}
                 onChange={(e) => setNewChecklistItem(e.target.value)}
-                placeholder="Adicionar item..."
+                placeholder="Adicionar item ao checklist..."
                 onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addChecklistItem())}
               />
               <Button type="button" size="sm" onClick={addChecklistItem}>
@@ -371,7 +371,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   <Input
                     value={newLink.url}
                     onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                    placeholder="URL"
+                    placeholder="URL do link"
                     className="flex-1"
                   />
                   <Button type="button" size="sm" onClick={addLink}>
