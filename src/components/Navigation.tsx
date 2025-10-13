@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react";
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings, UserPlus } from "lucide-react"; // Importar UserPlus
 import { useAuth } from "@/integrations/supabase/auth";
 
 const navItems = [
@@ -38,7 +38,13 @@ const navItems = [
     title: "Gerenciar Usuários",
     href: "/users",
     icon: Users,
-    adminOnly: false,
+    adminOnly: true, // Tornar esta rota adminOnly
+  },
+  {
+    title: "Convidar Usuário", // Novo item de navegação
+    href: "/invite-user",
+    icon: UserPlus, // Ícone para convidar usuário
+    adminOnly: true,
   },
 ];
 

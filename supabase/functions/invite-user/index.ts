@@ -45,7 +45,7 @@ serve(async (req) => {
       });
     }
 
-    const { email } = await req.json();
+    const { email, first_name, last_name } = await req.json();
 
     if (!email) {
       return new Response(JSON.stringify({ error: "Email is required" }), {
@@ -63,7 +63,9 @@ serve(async (req) => {
       }
     );
 
-    const { data, error } = await supabaseAdminClient.auth.admin.inviteUserByEmail(email);
+    const { data, error } = await supabaseAdminClient.auth.admin.inviteUserByEmail(email, {
+      data: { first_name, last_name }, // Pass first_name and last_name as user_metadata
+    });
 
     if (error) {
       console.error("Error inviting user:", error);

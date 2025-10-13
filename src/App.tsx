@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import TagManagement from "./pages/TagManagement";
 import UserManagement from "./pages/UserManagement";
+import InviteUserPage from "./pages/InviteUserPage"; // Importar a nova página
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import { useEffect } from "react";
@@ -127,6 +128,14 @@ const AppRoutes = () => {
           element={
             <AdminProtectedRoute>
               <UserManagement />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/invite-user"
+          element={
+            <AdminProtectedRoute>
+              <InviteUserPage />
             </AdminProtectedRoute>
           }
         />
