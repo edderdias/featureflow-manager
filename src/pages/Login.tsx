@@ -65,8 +65,8 @@ const Login = () => {
   return (
     <div className="flex justify-center items-center min-h-screen bg-background">
       <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-lg">
-        <img src="/logo.png" alt="DemandFlow Logo" className="h-24 w-24 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao DemandFlow</h2>
+        <img src="/logo.png" alt="ToqDesk Logo" className="h-24 w-24 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
         <Auth
           supabaseClient={supabase}
           providers={[]}
