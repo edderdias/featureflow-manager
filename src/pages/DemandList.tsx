@@ -37,6 +37,7 @@ const DemandList = () => {
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
+      storyPoints: d.story_points, // Mapeia story_points do DB para storyPoints no frontend
     })) as Demand[];
   };
 
@@ -50,8 +51,8 @@ const DemandList = () => {
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Extrai as propriedades de data e as converte para string ISO
-      const { dueDate, createdAt, updatedAt, ...rest } = newDemandData;
+      // Extrai as propriedades de data e storyPoints e as converte/mapeia
+      const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = newDemandData;
 
       const { data, error } = await supabase
         .from("demands")
@@ -61,6 +62,7 @@ const DemandList = () => {
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null, // Converte Date para string ISO
+          story_points: storyPoints, // Mapeia storyPoints para story_points no DB
         })
         .select()
         .single();
@@ -81,8 +83,8 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Extrai as propriedades de data e as converte para string ISO
-      const { dueDate, createdAt, updatedAt, ...rest } = updatedDemandData;
+      // Extrai as propriedades de data e storyPoints e as converte/mapeia
+      const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
@@ -90,6 +92,7 @@ const DemandList = () => {
           ...rest, // Espalha as demais propriedades
           updated_at: (updatedAt || new Date()).toISOString(), // Sempre atualiza 'updated_at'
           due_date: dueDate ? dueDate.toISOString() : null, // Converte Date para string ISO
+          story_points: storyPoints, // Mapeia storyPoints para story_points no DB
         })
         .eq("id", updatedDemandData.id)
         .eq("user_id", user.id)
@@ -106,6 +109,25 @@ const DemandList = () => {
     },
     onError: (err) => {
       toast.error(`Erro ao atualizar demanda: ${err.message}`);
+    },
+  });
+
+  const deleteDemandMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      const { error } = await supabase
+        .from("demands")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+      toast.success("Demanda excluída com sucesso!");
+    },
+    onError: (err) => {
+      toast.error(`Erro ao excluir demanda: ${err.message}`);
     },
   });
 
