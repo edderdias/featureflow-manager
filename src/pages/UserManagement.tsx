@@ -71,19 +71,17 @@ const UserManagement = () => {
     }
   });
 
-  // Removida a mutação updateUserRoleMutation, pois a edição de papel será feita via updateUserProfileMutation
-  // Removida a função handleRoleChange
-
   const updateUserProfileMutation = useMutation({
-    mutationFn: async (updatedUser: Partial<UserProfile>) => {
+    mutationFn: async (updatedUser: Partial<UserProfile> & { password?: string }) => { // Adicionado 'password' ao tipo
       if (!user) throw new Error("Usuário não autenticado");
-      const { id, first_name, last_name, avatar_url, role } = updatedUser; // Incluído 'role'
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ first_name, last_name, avatar_url, role }) // Atualiza 'role'
-        .eq("id", id)
-        .select()
-        .single();
+      const { id, first_name, last_name, avatar_url, role, password } = updatedUser;
+
+      const { data, error } = await supabase.functions.invoke("admin-actions", {
+        method: "PATCH", // Usando o novo método PATCH
+        body: JSON.stringify({ userId: id, first_name, last_name, avatar_url, role, password }),
+        headers: { "Content-Type": "application/json" },
+      });
+
       if (error) throw error;
       return data;
     },
@@ -160,9 +158,6 @@ const UserManagement = () => {
           </p>
         </div>
 
-        {/* O card de convite de usuário foi removido, pois a função Edge 'invite-user' foi excluída */}
-        {/* Se a funcionalidade de convite for reintroduzida, este card pode ser adicionado novamente */}
-
         <Card>
           <CardHeader>
             <CardTitle>Usuários Cadastrados</CardTitle>
@@ -186,14 +181,14 @@ const UserManagement = () => {
                       </TableCell>
                       <TableCell>{profile.email || "N/A"}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{profile.role}</Badge> {/* Exibe o papel como Badge */}
+                        <Badge variant="secondary">{profile.role}</Badge>
                       </TableCell>
                       <TableCell className="text-right flex gap-2 justify-end">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(profile)}
-                          disabled={profile.id === user?.id} // Impede que o usuário edite a si mesmo
+                          disabled={profile.id === user?.id}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -202,7 +197,7 @@ const UserManagement = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={profile.id === user?.id} // Impede que o usuário se exclua
+                              disabled={profile.id === user?.id}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

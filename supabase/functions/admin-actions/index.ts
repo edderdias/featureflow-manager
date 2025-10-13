@@ -8,7 +8,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
@@ -132,6 +132,57 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ message: "User deleted successfully" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (req.method === "PATCH") { // Novo método PATCH para atualização
+      const { userId, password, first_name, last_name, avatar_url, role } = await req.json();
+
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "User ID is required" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+
+      // Update auth.users table (for password)
+      if (password) {
+        const { error: authUpdateError } = await supabaseAdminClient.auth.admin.updateUserById(
+          userId,
+          { password: password }
+        );
+        if (authUpdateError) {
+          console.error("Edge Function Error: Error updating user password:", authUpdateError);
+          return new Response(JSON.stringify({ error: `Failed to update user password: ${authUpdateError.message}` }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          });
+        }
+      }
+
+      // Update public.profiles table (for first_name, last_name, avatar_url, role)
+      const profileUpdates: { first_name?: string; last_name?: string; avatar_url?: string; role?: string; updated_at: string } = {
+        updated_at: new Date().toISOString(),
+      };
+      if (first_name !== undefined) profileUpdates.first_name = first_name;
+      if (last_name !== undefined) profileUpdates.last_name = last_name;
+      if (avatar_url !== undefined) profileUpdates.avatar_url = avatar_url;
+      if (role !== undefined) profileUpdates.role = role;
+
+      const { error: profileUpdateError } = await supabaseAdminClient
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", userId);
+
+      if (profileUpdateError) {
+        console.error("Edge Function Error: Error updating user profile:", profileUpdateError);
+        return new Response(JSON.stringify({ error: `Failed to update user profile: ${profileUpdateError.message}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        });
+      }
+
+      return new Response(JSON.stringify({ message: "User updated successfully" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });

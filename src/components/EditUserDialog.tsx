@@ -8,7 +8,7 @@ import { UserProfile } from "@/pages/UserManagement"; // Importar a interface Us
 
 interface EditUserDialogProps {
   user: UserProfile;
-  onSave: (updatedUser: Partial<UserProfile>) => void;
+  onSave: (updatedUser: Partial<UserProfile> & { password?: string }) => void; // Adicionado 'password'
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -18,8 +18,9 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     avatar_url: user.avatar_url || "",
-    role: user.role || "user", // Adicionado role
+    role: user.role || "user",
   });
+  const [newPassword, setNewPassword] = useState(""); // Estado para a nova senha
 
   useEffect(() => {
     if (user) {
@@ -29,11 +30,16 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
         avatar_url: user.avatar_url || "",
         role: user.role || "user",
       });
+      setNewPassword(""); // Limpa a senha ao abrir o diálogo
     }
   }, [user, open]);
 
   const handleSave = () => {
-    onSave({ id: user.id, ...formData });
+    onSave({ 
+      id: user.id, 
+      ...formData, 
+      password: newPassword || undefined // Envia a senha apenas se não estiver vazia
+    });
     onOpenChange(false);
   };
 
@@ -51,7 +57,7 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
             <Input
               id="email"
               value={user.email || ""}
-              readOnly // E-mail é somente leitura
+              readOnly
               className="col-span-3"
             />
           </div>
@@ -102,9 +108,22 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
               <SelectContent>
                 <SelectItem value="user">Usuário</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="technician">Técnico</SelectItem> {/* Nova opção adicionada */}
+                <SelectItem value="technician">Técnico</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="new_password" className="text-right">
+              Nova Senha
+            </Label>
+            <Input
+              id="new_password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="col-span-3"
+              placeholder="Deixe em branco para não alterar"
+            />
           </div>
         </div>
         <DialogFooter>
