@@ -12,31 +12,49 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+      console.error("Edge Function Error: Missing Supabase environment variables.");
+      return new Response(JSON.stringify({ error: "Missing Supabase environment variables. Please ensure SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: { headers: { "x-client-info": "supabase-edge-function" } },
       }
     );
 
     // Verify user's authentication
-    const { data: { user: authUser } } = await supabaseClient.auth.getUser();
+    const { data: { user: authUser }, error: getUserError } = await supabaseClient.auth.getUser();
 
-    if (!authUser) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    if (getUserError) {
+      console.error("Edge Function Error: Failed to get authenticated user.", getUserError);
+      return new Response(JSON.stringify({ error: `Authentication failed: ${getUserError.message}` }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
 
-    // Removida a verificação de papel de administrador.
-    // Qualquer usuário autenticado pode agora invocar esta função.
+    if (!authUser) {
+      console.error("Edge Function Error: Unauthorized - No authenticated user found.");
+      return new Response(JSON.stringify({ error: "Unauthorized: No authenticated user found. Please log in." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
 
     // Use the service role key for operations that require elevated privileges
     const supabaseAdminClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseUrl,
+      supabaseServiceRoleKey,
       {
         global: { headers: { "x-client-info": "supabase-edge-function" } },
       }
@@ -45,12 +63,18 @@ serve(async (req) => {
     if (req.method === "GET") {
       // List all users with their profiles
       const { data: authUsers, error: authUsersError } = await supabaseAdminClient.auth.admin.listUsers();
-      if (authUsersError) throw authUsersError;
+      if (authUsersError) {
+        console.error("Edge Function Error: Failed to list users.", authUsersError);
+        throw authUsersError;
+      }
 
       const { data: profiles, error: profilesDataError } = await supabaseAdminClient
         .from("profiles")
         .select("id, first_name, last_name, avatar_url, role");
-      if (profilesDataError) throw profilesDataError;
+      if (profilesDataError) {
+        console.error("Edge Function Error: Failed to fetch profiles.", profilesDataError);
+        throw profilesDataError;
+      }
 
       const usersWithProfiles = authUsers.users.map(user => {
         const userProfile = profiles.find(p => p.id === user.id);
@@ -83,7 +107,7 @@ serve(async (req) => {
       const { error: deleteError } = await supabaseAdminClient.auth.admin.deleteUser(userId);
 
       if (deleteError) {
-        console.error("Error deleting user:", deleteError);
+        console.error("Edge Function Error: Error deleting user:", deleteError);
         return new Response(JSON.stringify({ error: deleteError.message }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500,
@@ -101,8 +125,8 @@ serve(async (req) => {
       status: 405,
     });
   } catch (error) {
-    console.error("Unhandled error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Unhandled error in Edge Function 'admin-actions':", error);
+    return new Response(JSON.stringify({ error: error.message || "An unexpected error occurred." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

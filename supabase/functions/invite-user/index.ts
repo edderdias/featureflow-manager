@@ -12,26 +12,44 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+      console.error("Edge Function Error: Missing Supabase environment variables.");
+      return new Response(JSON.stringify({ error: "Missing Supabase environment variables. Please ensure SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: { headers: { "x-client-info": "supabase-edge-function" } },
       }
     );
 
     // Verify user's authentication
-    const { data: { user: authUser } } = await supabaseClient.auth.getUser();
+    const { data: { user: authUser }, error: getUserError } = await supabaseClient.auth.getUser();
 
-    if (!authUser) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    if (getUserError) {
+      console.error("Edge Function Error: Failed to get authenticated user.", getUserError);
+      return new Response(JSON.stringify({ error: `Authentication failed: ${getUserError.message}` }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
 
-    // Removida a verificação de papel de administrador.
-    // Qualquer usuário autenticado pode agora invocar esta função.
+    if (!authUser) {
+      console.error("Edge Function Error: Unauthorized - No authenticated user found.");
+      return new Response(JSON.stringify({ error: "Unauthorized: No authenticated user found. Please log in." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
 
     const { email, first_name, last_name } = await req.json();
 
@@ -44,8 +62,8 @@ serve(async (req) => {
 
     // Use the service role key for admin operations
     const supabaseAdminClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseUrl,
+      supabaseServiceRoleKey,
       {
         global: { headers: { "x-client-info": "supabase-edge-function" } },
       }
@@ -56,7 +74,7 @@ serve(async (req) => {
     });
 
     if (error) {
-      console.error("Error inviting user:", error);
+      console.error("Edge Function Error: Error inviting user:", error);
       return new Response(JSON.stringify({ error: error.message }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
@@ -68,8 +86,8 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("Unhandled error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Unhandled error in Edge Function 'invite-user':", error);
+    return new Response(JSON.stringify({ error: error.message || "An unexpected error occurred." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
