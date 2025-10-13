@@ -10,6 +10,10 @@ import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText } from "lucide
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar hooks do TanStack Query
+import { supabase } from "@/integrations/supabase/client"; // Importar cliente Supabase
+import { useAuth } from "@/integrations/supabase/auth"; // Importar hook de autenticação
+import { toast } from "sonner"; // Importar toast para notificações
 
 interface DemandDialogProps {
   demand?: Demand;
@@ -19,22 +23,33 @@ interface DemandDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Definir interface para Tag (igual à usada em TagManagement)
+interface Tag {
+  id: string;
+  name: string;
+  user_id: string;
+  created_at: string;
+}
+
 export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: DemandDialogProps) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState<Partial<Demand>>(
     demand || {
       title: "",
       description: "",
-      type: undefined, // Alterado para não vir preenchido
+      type: undefined,
       priority: "medium",
       status: "todo",
-      system: undefined, // Alterado para não vir preenchido
+      system: undefined,
       responsible: "",
       checklist: [],
       attachments: [],
       tags: [],
       storyPoints: 0,
-      createdAt: new Date(), // Nova demanda: data de abertura padrão
-      dueDate: new Date(), // Nova demanda: data de entrega padrão
+      createdAt: new Date(),
+      dueDate: new Date(),
     }
   );
 
@@ -49,20 +64,56 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       setFormData({
         title: "",
         description: "",
-        type: undefined, // Resetar para não preenchido
+        type: undefined,
         priority: "medium",
         status: "todo",
-        system: undefined, // Resetar para não preenchido
+        system: undefined,
         responsible: "",
         checklist: [],
         attachments: [],
         tags: [],
         storyPoints: 0,
-        createdAt: new Date(), // Resetar para data atual
-        dueDate: new Date(), // Resetar para data atual
+        createdAt: new Date(),
+        dueDate: new Date(),
       });
     }
-  }, [demand, open]); // Reset form when dialog opens or demand changes
+  }, [demand, open]);
+
+  // Query para buscar tags existentes do Supabase
+  const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
+    queryKey: ["tags", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("tags")
+        .select("*")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data as Tag[];
+    },
+    enabled: !!user,
+  });
+
+  // Mutação para adicionar uma nova tag ao banco de dados
+  const addTagToDbMutation = useMutation({
+    mutationFn: async (name: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      const { data, error } = await supabase
+        .from("tags")
+        .insert({ name, user_id: user.id })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tags"] }); // Invalida o cache de tags para recarregar
+      toast.success("Nova tag criada no sistema!");
+    },
+    onError: (err) => {
+      toast.error(`Erro ao criar nova tag: ${err.message}`);
+    },
+  });
 
   const handleSave = () => {
     onSave(formData);
@@ -124,11 +175,21 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     });
   };
 
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags?.includes(newTag)) {
+  const addTag = async () => {
+    const trimmedTag = newTag.trim();
+    if (trimmedTag && !formData.tags?.includes(trimmedTag)) {
+      // Verifica se a tag já existe no banco de dados
+      const tagExistsInDb = existingTags?.some(tag => tag.name.toLowerCase() === trimmedTag.toLowerCase());
+
+      if (!tagExistsInDb) {
+        // Se não existe, cria a tag no banco de dados
+        await addTagToDbMutation.mutateAsync(trimmedTag);
+      }
+      
+      // Adiciona a tag à demanda (seja ela nova ou já existente)
       setFormData({
         ...formData,
-        tags: [...(formData.tags || []), newTag],
+        tags: [...(formData.tags || []), trimmedTag],
       });
       setNewTag("");
     }
@@ -294,7 +355,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dueDate">Data de Abertura</Label> {/* Alterado o rótulo */}
+                <Label htmlFor="dueDate">Data de Abertura</Label>
                 <Input
                   id="dueDate"
                   type="date"
@@ -314,8 +375,9 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   onChange={(e) => setNewTag(e.target.value)}
                   placeholder="Adicionar tag..."
                   onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                  disabled={isLoadingTags || addTagToDbMutation.isPending}
                 />
-                <Button type="button" size="sm" onClick={addTag}>
+                <Button type="button" size="sm" onClick={addTag} disabled={isLoadingTags || addTagToDbMutation.isPending}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
