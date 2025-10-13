@@ -5,6 +5,49 @@ import { useAuth } from "@/integrations/supabase/auth";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const portugueseLocalization = {
+  variables: {
+    sign_in: {
+      email_label: "Seu e-mail",
+      password_label: "Sua senha",
+      email_input_placeholder: "Digite seu e-mail",
+      password_input_placeholder: "Digite sua senha",
+      button_label: "Entrar",
+      social_provider_text: "Ou continue com",
+      link_text: "Já tem uma conta? Faça login",
+      forgotten_password_text: "Esqueceu sua senha?",
+      confirmation_code_label: "Código de confirmação",
+      confirmation_code_input_placeholder: "Digite seu código de confirmação",
+      confirmation_code_button_label: "Confirmar",
+    },
+    sign_up: {
+      email_label: "Seu e-mail",
+      password_label: "Crie uma senha",
+      email_input_placeholder: "Digite seu e-mail",
+      password_input_placeholder: "Crie sua senha",
+      button_label: "Registrar",
+      social_provider_text: "Ou continue com",
+      link_text: "Não tem uma conta? Registre-se",
+    },
+    forgotten_password: {
+      email_label: "Seu e-mail",
+      email_input_placeholder: "Digite seu e-mail para redefinir",
+      button_label: "Enviar instruções de redefinição",
+      link_text: "Lembrou sua senha? Faça login",
+    },
+    update_password: {
+      password_label: "Nova senha",
+      password_input_placeholder: "Digite sua nova senha",
+      button_label: "Atualizar senha",
+    },
+    magic_link: {
+      email_input_placeholder: "Digite seu e-mail para o link mágico",
+      button_label: "Enviar link mágico",
+      link_text: "Já tem uma conta? Faça login",
+    },
+  },
+};
+
 const Login = () => {
   const { session, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -39,6 +82,7 @@ const Login = () => {
           }}
           theme="light"
           redirectTo={window.location.origin}
+          localization={portugueseLocalization} // Adicionado para traduzir os rótulos
         />
       </div>
     </div>
