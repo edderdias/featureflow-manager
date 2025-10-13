@@ -77,6 +77,22 @@ serve(async (req) => {
       }
     );
 
+    // --- START: Admin role check ---
+    const { data: callerProfile, error: callerProfileError } = await supabaseAdminClient
+      .from("profiles")
+      .select("role")
+      .eq("id", authUser.id)
+      .single();
+
+    if (callerProfileError || callerProfile?.role !== "admin") {
+      console.error("Edge Function Error: Unauthorized - User is not an admin.", callerProfileError);
+      return new Response(JSON.stringify({ error: "Unauthorized: Only administrators can perform this action." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, // Forbidden
+      });
+    }
+    // --- END: Admin role check ---
+
     if (req.method === "GET") {
       // List all users with their profiles
       const { data: authUsers, error: authUsersError } = await supabaseAdminClient.auth.admin.listUsers();
