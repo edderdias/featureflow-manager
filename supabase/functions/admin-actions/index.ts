@@ -24,11 +24,28 @@ serve(async (req) => {
       });
     }
 
+    // Extract the user's JWT from the Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Edge Function Error: Authorization header missing.");
+      return new Response(JSON.stringify({ error: "Authorization header missing." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+
+    // Create a Supabase client with the user's JWT for authentication
     const supabaseClient = createClient(
       supabaseUrl,
       supabaseAnonKey,
       {
-        global: { headers: { "x-client-info": "supabase-edge-function" } },
+        global: {
+          headers: {
+            "x-client-info": "supabase-edge-function",
+            "Authorization": `Bearer ${token}`, // Pass the user's JWT
+          },
+        },
       }
     );
 
@@ -64,7 +81,7 @@ serve(async (req) => {
       // List all users with their profiles
       const { data: authUsers, error: authUsersError } = await supabaseAdminClient.auth.admin.listUsers();
       if (authUsersError) {
-        console.error("Edge Function Error: Failed to list users.", authUsersError);
+        console.error("Edge Function Error: Failed to list users from auth.admin:", authUsersError);
         throw authUsersError;
       }
 
@@ -72,7 +89,7 @@ serve(async (req) => {
         .from("profiles")
         .select("id, first_name, last_name, avatar_url, role");
       if (profilesDataError) {
-        console.error("Edge Function Error: Failed to fetch profiles.", profilesDataError);
+        console.error("Edge Function Error: Failed to fetch profiles from public.profiles:", profilesDataError);
         throw profilesDataError;
       }
 
