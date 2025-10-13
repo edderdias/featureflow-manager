@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserProfileDialog } from "./UserProfileDialog";
 import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query"; // Importação corrigida
 
 export function UserNav() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export function UserNav() {
   };
 
   // Fetch user profile to get first_name, last_name, avatar_url
-  const { data: profileData } = React.useQuery({
+  const { data: profileData } = useQuery({ // Uso corrigido
     queryKey: ["profiles", user?.id],
     queryFn: async () => {
       if (!user) return null;
