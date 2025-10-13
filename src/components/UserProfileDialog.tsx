@@ -131,6 +131,7 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
               value={userRole || "user"}
               readOnly
               className="col-span-3"
+              disabled={true}
             />
           </div>
         </div>

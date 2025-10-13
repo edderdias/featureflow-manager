@@ -237,7 +237,6 @@ const UserManagement = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(profile)}
-                          disabled={profile.id === user?.id}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -246,7 +245,7 @@ const UserManagement = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={profile.id === user?.id}
+                              disabled={profile.role !== 'admin'}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
