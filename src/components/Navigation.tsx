@@ -38,12 +38,6 @@ const navItems = [
     title: "Gerenciar Usuários",
     href: "/users",
     icon: Users,
-    adminOnly: false, // Alterado para false para ser visível a todos os usuários
-  },
-  {
-    title: "Gerenciar Perfil",
-    href: "/profile",
-    icon: Settings,
     adminOnly: false,
   },
 ];
@@ -67,11 +61,6 @@ export const Navigation = () => {
           
           <div className="flex items-center gap-1">
             {navItems.map((item) => {
-              // A condição adminOnly && userRole !== "admin" não é mais necessária aqui
-              // pois todos os itens agora têm adminOnly: false, exceto se houver um caso específico
-              // onde um item *deva* ser restrito a admin.
-              // Se a intenção é que *todos* os itens sejam sempre visíveis, podemos simplificar.
-              // Por enquanto, mantenho a lógica de filtro, mas com adminOnly: false para todos.
               if (item.adminOnly && userRole !== "admin") {
                 return null;
               }

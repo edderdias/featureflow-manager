@@ -15,7 +15,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import TagManagement from "./pages/TagManagement";
 import UserManagement from "./pages/UserManagement";
-import Profile from "./pages/Profile"; // Importando a nova página de perfil
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import { useEffect } from "react";
@@ -129,15 +128,6 @@ const AppRoutes = () => {
             <AdminProtectedRoute>
               <UserManagement />
             </AdminProtectedRoute>
-          }
-        />
-        {/* Nova rota para o perfil */}
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
           }
         />
         <Route path="*" element={<NotFound />} />
