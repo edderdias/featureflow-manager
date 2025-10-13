@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3 } from "lucide-react";
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags } from "lucide-react"; // Importando o ícone Tags
 
 const navItems = [
   {
@@ -22,6 +22,11 @@ const navItems = [
     title: "Relatórios",
     href: "/reports",
     icon: BarChart3,
+  },
+  {
+    title: "Gerenciar Tags", // Novo item de navegação
+    href: "/tags",
+    icon: Tags, // Ícone para tags
   },
 ];
 

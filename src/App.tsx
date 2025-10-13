@@ -13,6 +13,7 @@ import GanttView from "./pages/GanttView";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import TagManagement from "./pages/TagManagement"; // Importando a nova página
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import { useEffect } from "react";
 
@@ -108,6 +109,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tags"
+          element={
+            <ProtectedRoute>
+              <TagManagement />
             </ProtectedRoute>
           }
         />

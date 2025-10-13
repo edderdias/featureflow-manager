@@ -24,15 +24,17 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     demand || {
       title: "",
       description: "",
-      type: "feature",
+      type: undefined, // Alterado para não vir preenchido
       priority: "medium",
       status: "todo",
-      system: "toqweb",
+      system: undefined, // Alterado para não vir preenchido
       responsible: "",
       checklist: [],
       attachments: [],
       tags: [],
       storyPoints: 0,
+      createdAt: new Date(), // Nova demanda: data de abertura padrão
+      dueDate: new Date(), // Nova demanda: data de entrega padrão
     }
   );
 
@@ -47,15 +49,17 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       setFormData({
         title: "",
         description: "",
-        type: "feature",
+        type: undefined, // Resetar para não preenchido
         priority: "medium",
         status: "todo",
-        system: "toqweb",
+        system: undefined, // Resetar para não preenchido
         responsible: "",
         checklist: [],
         attachments: [],
         tags: [],
         storyPoints: 0,
+        createdAt: new Date(), // Resetar para data atual
+        dueDate: new Date(), // Resetar para data atual
       });
     }
   }, [demand, open]); // Reset form when dialog opens or demand changes
@@ -290,7 +294,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dueDate">Data de Entrega</Label>
+                <Label htmlFor="dueDate">Data de Abertura</Label> {/* Alterado o rótulo */}
                 <Input
                   id="dueDate"
                   type="date"
