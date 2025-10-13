@@ -48,7 +48,7 @@ const DemandList = () => {
 
   const addDemandMutation = useMutation({
     mutationFn: async (newDemand: Partial<Demand>) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase
         .from("demands")
         .insert({
@@ -75,7 +75,7 @@ const DemandList = () => {
 
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemand: Partial<Demand>) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase
         .from("demands")
         .update({
@@ -103,7 +103,7 @@ const DemandList = () => {
 
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user) throw new Error("Usuário não autenticado");
       const { error } = await supabase
         .from("demands")
         .delete()
