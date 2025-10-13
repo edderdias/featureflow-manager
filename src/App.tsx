@@ -15,7 +15,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import TagManagement from "./pages/TagManagement";
 import UserManagement from "./pages/UserManagement";
-import InviteUserPage from "./pages/InviteUserPage";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute"; // Manter import para caso seja necessário no futuro, mas não será usado diretamente aqui
 import { useEffect } from "react";
@@ -126,16 +125,8 @@ const AppRoutes = () => {
         <Route
           path="/users"
           element={
-            <ProtectedRoute> {/* Alterado de AdminProtectedRoute para ProtectedRoute */}
+            <ProtectedRoute>
               <UserManagement />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/invite-user"
-          element={
-            <ProtectedRoute> {/* Alterado de AdminProtectedRoute para ProtectedRoute */}
-              <InviteUserPage />
             </ProtectedRoute>
           }
         />
