@@ -30,22 +30,10 @@ serve(async (req) => {
       });
     }
 
-    // Check if the authenticated user is an admin
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
-      .select("role")
-      .eq("id", authUser.id)
-      .single();
+    // Removida a verificação de papel de administrador.
+    // Qualquer usuário autenticado pode agora invocar esta função.
 
-    if (profileError || profile?.role !== "admin") {
-      console.error("Profile error or not admin:", profileError);
-      return new Response(JSON.stringify({ error: "Forbidden: Only administrators can perform this action." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 403,
-      });
-    }
-
-    // Use the service role key for admin operations
+    // Use the service role key for operations that require elevated privileges
     const supabaseAdminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",

@@ -10,7 +10,7 @@ import { Plus, User, Mail, Shield, Loader2, Edit, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { EditUserDialog } from "@/components/EditUserDialog"; // Importar o novo componente de diálogo
+import { EditUserDialog } from "@/components/EditUserDialog";
 
 export interface UserProfile {
   id: string;
@@ -24,14 +24,14 @@ export interface UserProfile {
 
 const UserManagement = () => {
   const queryClient = useQueryClient();
-  const { user, userRole } = useAuth();
+  const { user } = useAuth(); // userRole não é mais necessário para controle de acesso na UI
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | undefined>(undefined);
 
   const fetchUsers = async () => {
-    if (userRole !== "admin") return [];
+    if (!user) return []; // Ainda precisa de um usuário autenticado para buscar dados
     
     // Call the admin-actions Edge Function to list users
     const { data, error } = await supabase.functions.invoke("admin-actions", {
@@ -44,9 +44,9 @@ const UserManagement = () => {
   };
 
   const { data: users, isLoading, error } = useQuery<UserProfile[], Error>({
-    queryKey: ["users", user?.id, userRole],
+    queryKey: ["users", user?.id],
     queryFn: fetchUsers,
-    enabled: userRole === "admin",
+    enabled: !!user, // Habilitado para qualquer usuário autenticado
   });
 
   const inviteUserMutation = useMutation({
@@ -175,13 +175,8 @@ const UserManagement = () => {
     );
   }
 
-  if (userRole !== "admin") {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-destructive">Acesso negado. Você não tem permissão de administrador.</p>
-      </div>
-    );
-  }
+  // Removido o bloco de acesso negado para permitir que qualquer usuário autenticado veja a página.
+  // As permissões para as ações (convidar, editar papel, excluir) serão controladas pelas funções Edge e RLS.
 
   return (
     <div className="min-h-screen bg-background">
@@ -261,7 +256,7 @@ const UserManagement = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditUser(profile)}
-                          disabled={profile.id === user?.id} // Não permite editar o próprio perfil por aqui
+                          disabled={profile.id === user?.id}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -270,7 +265,7 @@ const UserManagement = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={profile.id === user?.id} // Não permite excluir o próprio usuário
+                              disabled={profile.id === user?.id}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

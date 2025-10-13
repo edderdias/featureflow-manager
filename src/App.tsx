@@ -15,9 +15,9 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import TagManagement from "./pages/TagManagement";
 import UserManagement from "./pages/UserManagement";
-import InviteUserPage from "./pages/InviteUserPage"; // Importar a nova página
+import InviteUserPage from "./pages/InviteUserPage";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
-import AdminProtectedRoute from "./components/AdminProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute"; // Manter import para caso seja necessário no futuro, mas não será usado diretamente aqui
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -126,17 +126,17 @@ const AppRoutes = () => {
         <Route
           path="/users"
           element={
-            <AdminProtectedRoute>
+            <ProtectedRoute> {/* Alterado de AdminProtectedRoute para ProtectedRoute */}
               <UserManagement />
-            </AdminProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/invite-user"
           element={
-            <AdminProtectedRoute>
+            <ProtectedRoute> {/* Alterado de AdminProtectedRoute para ProtectedRoute */}
               <InviteUserPage />
-            </AdminProtectedRoute>
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<NotFound />} />

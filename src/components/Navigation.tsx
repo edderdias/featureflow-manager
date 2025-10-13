@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings, UserPlus } from "lucide-react"; // Importar UserPlus
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings, UserPlus } from "lucide-react";
 import { useAuth } from "@/integrations/supabase/auth";
 
 const navItems = [
@@ -8,52 +8,45 @@ const navItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
-    adminOnly: false,
   },
   {
     title: "Lista de Demandas",
     href: "/demands",
     icon: ListTodo,
-    adminOnly: false,
   },
   {
     title: "Board Kanban",
     href: "/kanban",
     icon: LayoutGrid,
-    adminOnly: false,
   },
   {
     title: "Relatórios",
     href: "/reports",
     icon: BarChart3,
-    adminOnly: false,
   },
   {
     title: "Gerenciar Tags",
     href: "/tags",
     icon: Tags,
-    adminOnly: false,
   },
   {
     title: "Gerenciar Usuários",
     href: "/users",
     icon: Users,
-    adminOnly: true, // Tornar esta rota adminOnly
   },
   {
-    title: "Convidar Usuário", // Novo item de navegação
+    title: "Convidar Usuário",
     href: "/invite-user",
-    icon: UserPlus, // Ícone para convidar usuário
-    adminOnly: true,
+    icon: UserPlus,
   },
 ];
 
 export const Navigation = () => {
   const location = useLocation();
-  const { userRole, isLoading } = useAuth();
+  const { session, isLoading } = useAuth(); // Ainda precisamos do session para saber se o usuário está logado
 
-  if (isLoading) {
-    return null; // Ou um spinner de carregamento
+  if (isLoading || !session) { // Se não estiver carregando ou não houver sessão, não renderiza a navegação
+    return null;
   }
 
   return (
@@ -67,9 +60,6 @@ export const Navigation = () => {
           
           <div className="flex items-center gap-1">
             {navItems.map((item) => {
-              if (item.adminOnly && userRole !== "admin") {
-                return null;
-              }
               const isActive = location.pathname === item.href;
               return (
                 <Link

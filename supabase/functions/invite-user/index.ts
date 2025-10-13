@@ -20,7 +20,7 @@ serve(async (req) => {
       }
     );
 
-    // Verify user's authentication and role
+    // Verify user's authentication
     const { data: { user: authUser } } = await supabaseClient.auth.getUser();
 
     if (!authUser) {
@@ -30,20 +30,8 @@ serve(async (req) => {
       });
     }
 
-    // Check if the authenticated user is an admin
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
-      .select("role")
-      .eq("id", authUser.id)
-      .single();
-
-    if (profileError || profile?.role !== "admin") {
-      console.error("Profile error or not admin:", profileError);
-      return new Response(JSON.stringify({ error: "Forbidden: Only administrators can invite users." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 403,
-      });
-    }
+    // Removida a verificação de papel de administrador.
+    // Qualquer usuário autenticado pode agora invocar esta função.
 
     const { email, first_name, last_name } = await req.json();
 
