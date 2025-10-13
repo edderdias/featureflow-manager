@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { mockDemands } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,16 +6,58 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getPriorityColor } from "@/lib/demandUtils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { Demand } from "@/types/demand";
 
 const CalendarView = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando calendário...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar calendário: {error.message}</p>
+      </div>
+    );
+  }
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getDemandsByDate = (date: Date) => {
-    return mockDemands.filter((demand) => isSameDay(demand.createdAt, date));
+    return (demands || []).filter((demand) => isSameDay(demand.createdAt, date));
   };
 
   const previousMonth = () => setCurrentDate(subMonths(currentDate, 1));
@@ -57,7 +98,7 @@ const CalendarView = () => {
           ))}
 
           {daysInMonth.map((day) => {
-            const demands = getDemandsByDate(day);
+            const dayDemands = getDemandsByDate(day);
             const isCurrentMonth = isSameMonth(day, currentDate);
 
             return (
@@ -67,7 +108,7 @@ const CalendarView = () => {
               >
                 <div className="text-sm font-medium mb-1">{format(day, "d")}</div>
                 <div className="space-y-1">
-                  {demands.map((demand) => (
+                  {dayDemands.map((demand) => (
                     <div
                       key={demand.id}
                       className="text-xs p-1 rounded bg-primary/10 hover:bg-primary/20 cursor-pointer truncate"

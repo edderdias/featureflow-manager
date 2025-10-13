@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import Dashboard from "./pages/Dashboard";
 import DemandList from "./pages/DemandList";
@@ -12,8 +12,22 @@ import CalendarView from "./pages/CalendarView";
 import GanttView from "./pages/GanttView";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, isLoading } = useAuth();
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Carregando...</div>;
+  }
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,21 +35,86 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Navigation />
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/demands" element={<DemandList />} />
-          <Route path="/kanban" element={<KanbanBoard />} />
-          <Route path="/table" element={<TableView />} />
-          <Route path="/calendar" element={<CalendarView />} />
-          <Route path="/gantt" element={<GanttView />} />
-          <Route path="/reports" element={<Reports />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SessionContextProvider>
+          <AppRoutes />
+        </SessionContextProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
+
+const AppRoutes = () => {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-screen">Carregando...</div>;
+  }
+
+  return (
+    <>
+      {session && <Navigation />}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/demands"
+          element={
+            <ProtectedRoute>
+              <DemandList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kanban"
+          element={
+            <ProtectedRoute>
+              <KanbanBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/table"
+          element={
+            <ProtectedRoute>
+              <TableView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <CalendarView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gantt"
+          element={
+            <ProtectedRoute>
+              <GanttView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
 
 export default App;

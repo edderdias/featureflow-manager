@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,11 @@ interface DemandDialogProps {
   demand?: Demand;
   onSave: (demand: Partial<Demand>) => void;
   trigger?: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export const DemandDialog = ({ demand, onSave, trigger }: DemandDialogProps) => {
-  const [open, setOpen] = useState(false);
+export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: DemandDialogProps) => {
   const [formData, setFormData] = useState<Partial<Demand>>(
     demand || {
       title: "",
@@ -39,9 +40,29 @@ export const DemandDialog = ({ demand, onSave, trigger }: DemandDialogProps) => 
   const [newLink, setNewLink] = useState({ name: "", url: "" });
   const [newTag, setNewTag] = useState("");
 
+  useEffect(() => {
+    if (demand) {
+      setFormData(demand);
+    } else {
+      setFormData({
+        title: "",
+        description: "",
+        type: "feature",
+        priority: "medium",
+        status: "todo",
+        system: "toqweb",
+        responsible: "",
+        checklist: [],
+        attachments: [],
+        tags: [],
+        storyPoints: 0,
+      });
+    }
+  }, [demand, open]); // Reset form when dialog opens or demand changes
+
   const handleSave = () => {
     onSave(formData);
-    setOpen(false);
+    onOpenChange(false);
   };
 
   const addChecklistItem = () => {
@@ -117,14 +138,9 @@ export const DemandDialog = ({ demand, onSave, trigger }: DemandDialogProps) => 
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        {trigger || (
-          <Button size="lg" className="gap-2">
-            <Plus className="h-5 w-5" />
-            Nova Demanda
-          </Button>
-        )}
+        {trigger}
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -400,7 +416,7 @@ export const DemandDialog = ({ demand, onSave, trigger }: DemandDialogProps) => 
         </Tabs>
 
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button onClick={handleSave}>Salvar</Button>

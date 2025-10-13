@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { mockDemands } from "@/lib/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +7,53 @@ import { Search, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { Demand } from "@/types/demand";
 
 const TableView = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando tabela...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar tabela: {error.message}</p>
+      </div>
+    );
+  }
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -23,7 +64,7 @@ const TableView = () => {
     }
   };
 
-  const filteredDemands = mockDemands
+  const filteredDemands = (demands || [])
     .filter((demand) => {
       const searchLower = searchTerm.toLowerCase();
       return (
@@ -34,8 +75,8 @@ const TableView = () => {
       );
     })
     .sort((a, b) => {
-      let aValue: any = a[sortField as keyof typeof a];
-      let bValue: any = b[sortField as keyof typeof b];
+      let aValue: any = (a as any)[sortField];
+      let bValue: any = (b as any)[sortField];
 
       if (aValue instanceof Date) aValue = aValue.getTime();
       if (bValue instanceof Date) bValue = bValue.getTime();

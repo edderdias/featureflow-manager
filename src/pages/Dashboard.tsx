@@ -1,24 +1,66 @@
 import { StatsCard } from "@/components/StatsCard";
 import { DemandCard } from "@/components/DemandCard";
-import { mockDemands } from "@/lib/mockData";
 import { AlertCircle, CheckCircle2, Clock, ListTodo } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { Demand } from "@/types/demand";
 
 const Dashboard = () => {
-  const totalDemands = mockDemands.length;
-  const highPriority = mockDemands.filter(d => d.priority === "high").length;
-  const inProgress = mockDemands.filter(d => d.status === "in-progress").length;
-  const completed = mockDemands.filter(d => d.status === "done").length;
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar dashboard: {error.message}</p>
+      </div>
+    );
+  }
+
+  const totalDemands = demands?.length || 0;
+  const highPriority = demands?.filter(d => d.priority === "high").length || 0;
+  const inProgress = demands?.filter(d => d.status === "in-progress").length || 0;
+  const completed = demands?.filter(d => d.status === "done").length || 0;
 
   // Data for charts
   const typeData = [
-    { name: "Novo Recurso", value: mockDemands.filter(d => d.type === "feature").length, color: "hsl(var(--primary))" },
-    { name: "Bug", value: mockDemands.filter(d => d.type === "bug").length, color: "hsl(var(--destructive))" },
-    { name: "Reparo", value: mockDemands.filter(d => d.type === "repair").length, color: "hsl(var(--warning))" },
+    { name: "Novo Recurso", value: demands?.filter(d => d.type === "feature").length || 0, color: "hsl(var(--primary))" },
+    { name: "Bug", value: demands?.filter(d => d.type === "bug").length || 0, color: "hsl(var(--destructive))" },
+    { name: "Reparo", value: demands?.filter(d => d.type === "repair").length || 0, color: "hsl(var(--warning))" },
   ];
 
-  const systemData = mockDemands.reduce((acc, demand) => {
+  const systemData = (demands || []).reduce((acc, demand) => {
     const system = demand.system.toUpperCase();
     const existing = acc.find(item => item.name === system);
     if (existing) {
@@ -29,7 +71,7 @@ const Dashboard = () => {
     return acc;
   }, [] as { name: string; value: number }[]);
 
-  const recentDemands = mockDemands
+  const recentDemands = (demands || [])
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .slice(0, 3);
 

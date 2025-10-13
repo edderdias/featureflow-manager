@@ -1,13 +1,54 @@
 import { useState } from "react";
-import { mockDemands } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getPriorityColor, statusLabels } from "@/lib/demandUtils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { Demand } from "@/types/demand";
 
 const GanttView = () => {
   const [currentDate] = useState(new Date());
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando gráfico de Gantt...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar gráfico de Gantt: {error.message}</p>
+      </div>
+    );
+  }
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -24,7 +65,7 @@ const GanttView = () => {
     };
   };
 
-  const demandsWithDates = mockDemands.map((demand) => ({
+  const demandsWithDates = (demands || []).map((demand) => ({
     ...demand,
     endDate: demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
   }));

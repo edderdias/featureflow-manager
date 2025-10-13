@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { mockDemands } from "@/lib/mockData";
 import { DemandStatus, Demand } from "@/types/demand";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,14 +7,54 @@ import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabel
 import { User, Calendar, CheckSquare, Paperclip, Tag, Target } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
 
 const columns: DemandStatus[] = ["todo", "in-progress", "testing", "done"];
 
 const KanbanBoard = () => {
-  const [demands] = useState<Demand[]>(mockDemands);
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando Kanban...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar Kanban: {error.message}</p>
+      </div>
+    );
+  }
 
   const getDemandsByStatus = (status: DemandStatus) => {
-    return demands.filter((d) => d.status === status);
+    return (demands || []).filter((d) => d.status === status);
   };
 
   return (

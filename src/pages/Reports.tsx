@@ -1,12 +1,54 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockDemands } from "@/lib/mockData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { Demand } from "@/types/demand";
 
 const Reports = () => {
+  const { user } = useAuth();
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("demands")
+      .select("*")
+      .eq("user_id", user.id);
+    if (error) throw error;
+    return data.map((d: any) => ({
+      ...d,
+      createdAt: new Date(d.created_at),
+      updatedAt: new Date(d.updated_at),
+      dueDate: d.due_date ? new Date(d.due_date) : undefined,
+    })) as Demand[];
+  };
+
+  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+    queryKey: ["demands", user?.id],
+    queryFn: fetchDemands,
+    enabled: !!user,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-muted-foreground">Carregando relatórios...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-destructive">Erro ao carregar relatórios: {error.message}</p>
+      </div>
+    );
+  }
+
   // Bug reports by system
-  const bugsBySystem = mockDemands
+  const bugsBySystem = (demands || [])
     .filter(d => d.type === "bug")
     .reduce((acc, demand) => {
       const system = demand.system.toUpperCase();
@@ -22,19 +64,19 @@ const Reports = () => {
 
   // Priority distribution
   const priorityData = [
-    { prioridade: "Alta", quantidade: mockDemands.filter(d => d.priority === "high").length },
-    { prioridade: "Média", quantidade: mockDemands.filter(d => d.priority === "medium").length },
-    { prioridade: "Baixa", quantidade: mockDemands.filter(d => d.priority === "low").length },
+    { prioridade: "Alta", quantidade: (demands || []).filter(d => d.priority === "high").length },
+    { prioridade: "Média", quantidade: (demands || []).filter(d => d.priority === "medium").length },
+    { prioridade: "Baixa", quantidade: (demands || []).filter(d => d.priority === "low").length },
   ];
 
   // Type distribution
   const typeData = [
-    { tipo: "Novo Recurso", quantidade: mockDemands.filter(d => d.type === "feature").length },
-    { tipo: "Bug", quantidade: mockDemands.filter(d => d.type === "bug").length },
-    { tipo: "Reparo", quantidade: mockDemands.filter(d => d.type === "repair").length },
+    { tipo: "Novo Recurso", quantidade: (demands || []).filter(d => d.type === "feature").length },
+    { tipo: "Bug", quantidade: (demands || []).filter(d => d.type === "bug").length },
+    { tipo: "Reparo", quantidade: (demands || []).filter(d => d.type === "repair").length },
   ];
 
-  // Status progress (mock timeline data)
+  // Status progress (mock timeline data) - This would ideally come from actual demand history
   const progressData = [
     { semana: "Sem 1", concluidas: 5, iniciadas: 8 },
     { semana: "Sem 2", concluidas: 7, iniciadas: 6 },
