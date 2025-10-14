@@ -203,7 +203,22 @@ serve(async (req) => {
         status: 200,
       });
     } else if (req.method === "POST") { // Novo método POST para convidar usuários
-      const { email, first_name, last_name } = await req.json();
+      console.log("Edge Function: Handling POST request for user invitation.");
+      console.log("Content-Type:", req.headers.get("Content-Type"));
+      
+      let requestBody;
+      try {
+        requestBody = await req.json();
+        console.log("Request Body:", requestBody);
+      } catch (jsonError) {
+        console.error("Edge Function Error: Failed to parse request body as JSON.", jsonError);
+        return new Response(JSON.stringify({ error: `Invalid JSON in request body: ${jsonError.message}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+
+      const { email, first_name, last_name } = requestBody;
 
       if (!email) {
         return new Response(JSON.stringify({ error: "Email is required for invitation" }), {
