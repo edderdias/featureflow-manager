@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/integrations/supabase/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfileDialog } from "./UserProfileDialog";
 import { LogOut, User } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query"; // Importação corrigida
+import { useQuery } from "@tanstack/react-query";
+
+// Lazy load UserProfileDialog
+const UserProfileDialog = React.lazy(() => import("./UserProfileDialog").then(module => ({ default: module.UserProfileDialog })));
 
 export function UserNav() {
   const navigate = useNavigate();
@@ -41,7 +43,7 @@ export function UserNav() {
   };
 
   // Fetch user profile to get first_name, last_name, avatar_url
-  const { data: profileData } = useQuery({ // Uso corrigido
+  const { data: profileData } = useQuery({
     queryKey: ["profiles", user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -92,10 +94,14 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <UserProfileDialog
-        open={isProfileDialogOpen}
-        onOpenChange={setIsProfileDialogOpen}
-      />
+      {isProfileDialogOpen && (
+        <Suspense fallback={null}> {/* Fallback pode ser um spinner ou null */}
+          <UserProfileDialog
+            open={isProfileDialogOpen}
+            onOpenChange={setIsProfileDialogOpen}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
