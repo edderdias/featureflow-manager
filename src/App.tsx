@@ -1,11 +1,8 @@
-import React, { Suspense, useEffect } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import React, { Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
-import NotFound from "./pages/NotFound"; // Manter NotFound como importação direta, pois é pequeno e crítico para erros
+import NotFound from "./pages/NotFound";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 
@@ -23,6 +20,9 @@ const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
 const Login = React.lazy(() => import("./pages/Login"));
 
+// Lazy load GlobalProviders
+const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading } = useAuth();
   if (isLoading) {
@@ -36,15 +36,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SessionContextProvider>
-          <AppRoutes />
-        </SessionContextProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <Suspense fallback={null}> {/* Fallback para GlobalProviders */}
+      <LazyGlobalProviders>
+        <BrowserRouter>
+          <SessionContextProvider>
+            <AppRoutes />
+          </SessionContextProvider>
+        </BrowserRouter>
+      </LazyGlobalProviders>
+    </Suspense>
   </QueryClientProvider>
 );
 
