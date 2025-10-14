@@ -224,9 +224,18 @@ serve(async (req) => {
 
       if (inviteError) {
         console.error("Edge Function Error: Error inviting user:", inviteError);
-        return new Response(JSON.stringify({ error: inviteError.message }), {
+        let statusCode = 500;
+        let errorMessage = `Erro ao enviar convite: ${inviteError.message}`;
+
+        // Check for specific error message indicating user already exists
+        if (inviteError.message.includes("User already registered")) {
+          statusCode = 409; // Conflict
+          errorMessage = "Erro: Já existe um usuário registrado com este e-mail.";
+        }
+
+        return new Response(JSON.stringify({ error: errorMessage }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+          status: statusCode,
         });
       }
 
