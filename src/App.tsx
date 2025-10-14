@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Navigation } from "./components/Navigation";
+// import { Navigation } from "./components/Navigation"; // Removido para lazy loading
 import NotFound from "./pages/NotFound";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
@@ -23,6 +23,9 @@ const Login = React.lazy(() => import("./pages/Login"));
 // Lazy load GlobalProviders
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
 
+// Lazy load Navigation
+const LazyNavigation = React.lazy(() => import("./components/Navigation").then(module => ({ default: module.Navigation })));
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading } = useAuth();
   if (isLoading) {
@@ -36,7 +39,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Suspense fallback={null}> {/* Fallback para GlobalProviders */}
+    <Suspense fallback={null}>
       <LazyGlobalProviders>
         <BrowserRouter>
           <SessionContextProvider>
@@ -57,7 +60,11 @@ const AppRoutes = () => {
 
   return (
     <>
-      {session && <Navigation />}
+      {session && (
+        <Suspense fallback={null}> {/* Fallback para Navigation */}
+          <LazyNavigation />
+        </Suspense>
+      )}
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
           <Route path="/login" element={<Login />} />
