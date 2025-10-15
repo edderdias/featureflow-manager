@@ -57,8 +57,8 @@ const UserManagement = () => {
 
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "POST",
-        body: JSON.stringify({ email, first_name, last_name }),
-        headers: { "Content-Type": "application/json" },
+        // Passando o objeto diretamente, o Supabase client fará o JSON.stringify e definirá o Content-Type
+        body: { email, first_name, last_name }, 
       });
 
       if (error) throw error; // This error is a Supabase client error, not the Edge Function's response body error
