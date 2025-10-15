@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Users can only see their own demands" ON public.demands;

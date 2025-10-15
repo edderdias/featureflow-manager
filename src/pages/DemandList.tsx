@@ -16,7 +16,7 @@ import { toast } from "sonner";
 const DemandList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, userRole } = useAuth(); // Get userRole
+  const { user } = useAuth(); // userRole não é mais necessário para a lógica de fetch aqui
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -26,20 +26,11 @@ const DemandList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchDemands = async () => {
-    if (!user) return []; // No user, no demands to fetch (except public ones, but this list is protected)
+    if (!user) return []; // Se não houver usuário autenticado, não há demandas para buscar
 
-    let query = supabase.from("demands").select("*");
-
-    if (userRole === "admin") {
-      // Admins can see all demands (their own and client demands)
-      // The RLS policy "Admins can view all demands" should handle this.
-      // No need to add .eq("user_id", user.id) here for admins.
-    } else {
-      // Regular users only see their own demands
-      query = query.eq("user_id", user.id);
-    }
-
-    const { data, error } = await query;
+    // A consulta agora busca todas as demandas, e a RLS no Supabase controlará o que o usuário pode ver.
+    const { data, error } = await supabase.from("demands").select("*");
+    
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
@@ -51,7 +42,7 @@ const DemandList = () => {
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id, userRole], // Add userRole to queryKey
+    queryKey: ["demands", user?.id], // userRole removido do queryKey
     queryFn: fetchDemands,
     enabled: !!user,
   });
@@ -66,7 +57,7 @@ const DemandList = () => {
         .from("demands")
         .insert({
           ...rest,
-          user_id: user.id, // Ensure user_id is set for authenticated inserts
+          user_id: user.id, // Garante que o user_id seja definido para inserções autenticadas
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
@@ -102,7 +93,9 @@ const DemandList = () => {
           story_points: storyPoints,
         })
         .eq("id", updatedDemandData.id)
-        .eq("user_id", updatedDemandData.user_id || user.id) // Allow updating client demands by admin
+        // A RLS agora permite que usuários autenticados atualizem suas próprias demandas e admins atualizem qualquer demanda.
+        // Não precisamos mais do .eq("user_id", updatedDemandData.user_id || user.id) aqui,
+        // pois a política RLS de UPDATE já deve estar configurada para isso.
         .select()
         .single();
       if (error) throw error;
@@ -122,13 +115,11 @@ const DemandList = () => {
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error("Usuário não autenticado");
-      // For deletion, we need to ensure the user has permission.
-      // Admins can delete any demand, regular users only their own.
+      // A RLS agora permite que usuários autenticados excluam suas próprias demandas e admins excluam qualquer demanda.
       const { error } = await supabase
         .from("demands")
         .delete()
-        .eq("id", id)
-        .or(`user_id.eq.${user.id},user_id.is.null`); // Allow deletion if it's user's own or a client demand (for admin)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
