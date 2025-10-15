@@ -3,7 +3,8 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // Importar Link
+import { Button } from "@/components/ui/button"; // Importar Button
 
 const portugueseLocalization = {
   variables: {
@@ -85,6 +86,13 @@ const Login = () => {
           redirectTo={window.location.origin}
           localization={portugueseLocalization} // Adicionado para traduzir os rótulos
         />
+        <div className="text-center mt-4">
+          <Link to="/client-demand">
+            <Button variant="outline" className="w-full">
+              Abrir Demanda de Cliente
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
