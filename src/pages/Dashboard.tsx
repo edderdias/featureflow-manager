@@ -1,12 +1,14 @@
 import { StatsCard } from "@/components/StatsCard";
 import { DemandCard } from "@/components/DemandCard";
-import { AlertCircle, CheckCircle2, Clock, ListTodo } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, ListTodo, Plus } from "lucide-react"; // Added Plus icon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button"; // Added Button
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { Demand } from "@/types/demand";
+import { Link } from "react-router-dom"; // Added Link
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -78,11 +80,19 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Visão geral das demandas de desenvolvimento e suporte
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Visão geral das demandas de desenvolvimento e suporte
+            </p>
+          </div>
+          <Link to="/client-demand">
+            <Button size="lg" className="gap-2">
+              <Plus className="h-5 w-5" />
+              Abrir Demanda
+            </Button>
+          </Link>
         </div>
 
         {/* Stats Cards */}

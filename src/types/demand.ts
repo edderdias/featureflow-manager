@@ -27,6 +27,7 @@ export interface TimelineEvent {
 
 export interface Demand {
   id: string;
+  user_id?: string; // Made nullable
   title: string;
   description: string;
   type: DemandType;
@@ -43,4 +44,7 @@ export interface Demand {
   attachments?: Attachment[];
   timeline?: TimelineEvent[];
   tags?: string[];
+  client_cnpj?: string; // New field
+  client_email?: string; // New field
+  client_name?: string; // New field
 }

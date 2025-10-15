@@ -19,6 +19,7 @@ const Reports = React.lazy(() => import("./pages/Reports"));
 const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
 const Login = React.lazy(() => import("./pages/Login"));
+const ClientDemand = React.lazy(() => import("./pages/ClientDemand")); // Lazy load ClientDemand
 
 // Lazy load GlobalProviders
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
@@ -68,6 +69,7 @@ const AppRoutes = () => {
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/client-demand" element={<ClientDemand />} /> {/* New public route */}
           <Route
             path="/"
             element={

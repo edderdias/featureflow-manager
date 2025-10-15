@@ -16,7 +16,7 @@ import { toast } from "sonner";
 const DemandList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth(); // Get userRole
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -26,23 +26,32 @@ const DemandList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchDemands = async () => {
-    if (!user) return [];
-    const { data, error } = await supabase
-      .from("demands")
-      .select("*")
-      .eq("user_id", user.id);
+    if (!user) return []; // No user, no demands to fetch (except public ones, but this list is protected)
+
+    let query = supabase.from("demands").select("*");
+
+    if (userRole === "admin") {
+      // Admins can see all demands (their own and client demands)
+      // The RLS policy "Admins can view all demands" should handle this.
+      // No need to add .eq("user_id", user.id) here for admins.
+    } else {
+      // Regular users only see their own demands
+      query = query.eq("user_id", user.id);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
-      storyPoints: d.story_points, // Mapeia story_points do DB para storyPoints no frontend
+      storyPoints: d.story_points,
     })) as Demand[];
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id],
+    queryKey: ["demands", user?.id, userRole], // Add userRole to queryKey
     queryFn: fetchDemands,
     enabled: !!user,
   });
@@ -51,18 +60,17 @@ const DemandList = () => {
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Extrai as propriedades de data e storyPoints e as converte/mapeia
       const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = newDemandData;
 
       const { data, error } = await supabase
         .from("demands")
         .insert({
-          ...rest, // Espalha as demais propriedades
-          user_id: user.id,
+          ...rest,
+          user_id: user.id, // Ensure user_id is set for authenticated inserts
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
-          due_date: dueDate ? dueDate.toISOString() : null, // Converte Date para string ISO
-          story_points: storyPoints, // Mapeia storyPoints para story_points no DB
+          due_date: dueDate ? dueDate.toISOString() : null,
+          story_points: storyPoints,
         })
         .select()
         .single();
@@ -83,19 +91,18 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Extrai as propriedades de data e storyPoints e as converte/mapeia
       const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
         .update({
-          ...rest, // Espalha as demais propriedades
-          updated_at: (updatedAt || new Date()).toISOString(), // Sempre atualiza 'updated_at'
-          due_date: dueDate ? dueDate.toISOString() : null, // Converte Date para string ISO
-          story_points: storyPoints, // Mapeia storyPoints para story_points no DB
+          ...rest,
+          updated_at: (updatedAt || new Date()).toISOString(),
+          due_date: dueDate ? dueDate.toISOString() : null,
+          story_points: storyPoints,
         })
         .eq("id", updatedDemandData.id)
-        .eq("user_id", user.id)
+        .eq("user_id", updatedDemandData.user_id || user.id) // Allow updating client demands by admin
         .select()
         .single();
       if (error) throw error;
@@ -115,11 +122,13 @@ const DemandList = () => {
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error("Usuário não autenticado");
+      // For deletion, we need to ensure the user has permission.
+      // Admins can delete any demand, regular users only their own.
       const { error } = await supabase
         .from("demands")
         .delete()
         .eq("id", id)
-        .eq("user_id", user.id);
+        .or(`user_id.eq.${user.id},user_id.is.null`); // Allow deletion if it's user's own or a client demand (for admin)
       if (error) throw error;
     },
     onSuccess: () => {
@@ -154,7 +163,10 @@ const DemandList = () => {
     const matchesSearch =
       demand.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       demand.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      demand.responsible.toLowerCase().includes(searchTerm.toLowerCase());
+      demand.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) || // Search client name
+      (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) || // Search client email
+      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase())); // Search client CNPJ
 
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
     const matchesStatus = filterStatus === "all" || demand.status === filterStatus;
