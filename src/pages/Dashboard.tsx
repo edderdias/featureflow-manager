@@ -14,11 +14,12 @@ const Dashboard = () => {
   const { user } = useAuth();
 
   const fetchDemands = async () => {
-    if (!user) return [];
+    if (!user) return []; // Still require user to be logged in to fetch any demands
+
+    // Alterado: Removido .eq("user_id", user.id) para buscar todas as demandas
     const { data, error } = await supabase
       .from("demands")
-      .select("*")
-      .eq("user_id", user.id);
+      .select("*");
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
