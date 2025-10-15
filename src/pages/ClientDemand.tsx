@@ -113,9 +113,8 @@ const ClientDemand = () => {
       }
 
       const data = await response.json();
-      // Assuming the API returns a JSON object with a 'success' or 'isValid' boolean
-      // or the data itself is a boolean. Adjust this logic if the API response differs.
-      const isValid = typeof data === 'boolean' ? data : (data.isValid === true || data.success === true);
+      // Correção: CNPJ é válido se o objeto retornado não for vazio
+      const isValid = Object.keys(data).length > 0;
 
       setCnpjIsValid(isValid);
       if (!isValid) {
@@ -152,7 +151,18 @@ const ClientDemand = () => {
     }
 
     // Re-validate CNPJ on submit to ensure it's current
-    await validateCnpj(formData.client_cnpj || "");
+    // Await the debounced function to ensure validation completes before proceeding
+    await new Promise(resolve => {
+      const checkValidation = () => {
+        if (!isCnpjValidating) {
+          resolve(null);
+        } else {
+          setTimeout(checkValidation, 100);
+        }
+      };
+      checkValidation();
+    });
+
     if (!cnpjIsValid) {
       toast.error("Por favor, corrija o CNPJ antes de enviar a demanda.");
       setIsSubmitting(false);
