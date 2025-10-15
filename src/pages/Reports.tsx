@@ -12,10 +12,10 @@ const Reports = () => {
 
   const fetchDemands = async () => {
     if (!user) return [];
+    // Alterado: Removido .eq("user_id", user.id) para buscar todas as demandas
     const { data, error } = await supabase
       .from("demands")
-      .select("*")
-      .eq("user_id", user.id);
+      .select("*");
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
