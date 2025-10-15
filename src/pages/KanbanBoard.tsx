@@ -23,6 +23,7 @@ import {
   DragEndEvent,
   DragOverlay,
   UniqueIdentifier,
+  useDroppable, // Adicionado: Importação do useDroppable
 } from "@dnd-kit/core";
 import {
   SortableContext,
