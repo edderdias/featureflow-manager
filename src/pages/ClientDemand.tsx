@@ -136,8 +136,10 @@ const ClientDemand = () => {
 
   const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setFormData({ ...formData, client_cnpj: value });
-    debouncedValidateCnpj(value);
+    // Limita o valor a 14 caracteres antes de atualizar o estado
+    const limitedValue = value.slice(0, 14); 
+    setFormData({ ...formData, client_cnpj: limitedValue });
+    debouncedValidateCnpj(limitedValue);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -266,6 +268,7 @@ const ClientDemand = () => {
                     onChange={handleCnpjChange}
                     placeholder="00.000.000/0000-00"
                     required
+                    maxLength={14} // Limita a 14 caracteres
                     className={
                       cnpjIsValid === true
                         ? "border-green-500 focus-visible:ring-green-500"
