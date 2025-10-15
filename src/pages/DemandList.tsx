@@ -5,19 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, LayoutGrid, Table2, Calendar as CalendarIcon, GanttChartSquare } from "lucide-react";
+import { Plus, Search, LayoutGrid, Table2, Calendar as CalendarIcon, GanttChartSquare, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DemandPriority, DemandStatus, DemandType, Demand } from "@/types/demand";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
+import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels, getStatusColor } from "@/lib/demandUtils";
 
 const DemandList = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Mantido para possível uso futuro ou redirecionamentos específicos
   const queryClient = useQueryClient();
-  const { user } = useAuth(); // userRole não é mais necessário para a lógica de fetch aqui
+  const { user } = useAuth();
 
+  const [currentView, setCurrentView] = useState<"grid" | "table" | "calendar" | "gantt">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -25,10 +31,16 @@ const DemandList = () => {
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const fetchDemands = async () => {
-    if (!user) return []; // Se não houver usuário autenticado, não há demandas para buscar
+  // State for Table View sorting
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-    // A consulta agora busca todas as demandas, e a RLS no Supabase controlará o que o usuário pode ver.
+  // State for Calendar View
+  const [calendarCurrentDate, setCalendarCurrentDate] = useState(new Date());
+
+  const fetchDemands = async () => {
+    if (!user) return [];
+
     const { data, error } = await supabase.from("demands").select("*");
     
     if (error) throw error;
@@ -42,7 +54,7 @@ const DemandList = () => {
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id], // userRole removido do queryKey
+    queryKey: ["demands", user?.id],
     queryFn: fetchDemands,
     enabled: !!user,
   });
@@ -57,7 +69,7 @@ const DemandList = () => {
         .from("demands")
         .insert({
           ...rest,
-          user_id: user.id, // Garante que o user_id seja definido para inserções autenticadas
+          user_id: user.id,
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
@@ -93,9 +105,6 @@ const DemandList = () => {
           story_points: storyPoints,
         })
         .eq("id", updatedDemandData.id)
-        // A RLS agora permite que usuários autenticados atualizem suas próprias demandas e admins atualizem qualquer demanda.
-        // Não precisamos mais do .eq("user_id", updatedDemandData.user_id || user.id) aqui,
-        // pois a política RLS de UPDATE já deve estar configurada para isso.
         .select()
         .single();
       if (error) throw error;
@@ -115,7 +124,6 @@ const DemandList = () => {
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error("Usuário não autenticado");
-      // A RLS agora permite que usuários autenticados excluam suas próprias demandas e admins excluam qualquer demanda.
       const { error } = await supabase
         .from("demands")
         .delete()
@@ -155,9 +163,9 @@ const DemandList = () => {
       demand.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       demand.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       demand.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) || // Search client name
-      (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) || // Search client email
-      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase())); // Search client CNPJ
+      (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
     const matchesStatus = filterStatus === "all" || demand.status === filterStatus;
@@ -165,6 +173,64 @@ const DemandList = () => {
 
     return matchesSearch && matchesPriority && matchesStatus && matchesType;
   });
+
+  // --- Table View Logic ---
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedDemands = [...filteredDemands].sort((a, b) => {
+    let aValue: any = (a as any)[sortField];
+    let bValue: any = (b as any)[sortField];
+
+    if (aValue instanceof Date) aValue = aValue.getTime();
+    if (bValue instanceof Date) bValue = bValue.getTime();
+
+    if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // --- Calendar View Logic ---
+  const monthStart = startOfMonth(calendarCurrentDate);
+  const monthEnd = endOfMonth(calendarCurrentDate);
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  const getDemandsByDate = (date: Date) => {
+    return filteredDemands.filter((demand) => demand.createdAt && isSameDay(demand.createdAt, date));
+  };
+
+  const previousMonth = () => setCalendarCurrentDate(subMonths(calendarCurrentDate, 1));
+  const nextMonth = () => setCalendarCurrentDate(addMonths(calendarCurrentDate, 1));
+
+  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  // --- Gantt View Logic ---
+  const ganttMonthStart = startOfMonth(calendarCurrentDate); // Reusing calendar date for Gantt
+  const ganttMonthEnd = endOfMonth(calendarCurrentDate);
+  const ganttDaysInMonth = eachDayOfInterval({ start: ganttMonthStart, end: ganttMonthEnd });
+
+  const getTaskPosition = (startDate: Date, endDate: Date) => {
+    const start = Math.max(0, differenceInDays(startDate, ganttMonthStart));
+    const duration = differenceInDays(endDate, startDate) || 1;
+    const totalDays = ganttDaysInMonth.length;
+
+    return {
+      left: `${(start / totalDays) * 100}%`,
+      width: `${(duration / totalDays) * 100}%`,
+    };
+  };
+
+  const demandsWithDates = filteredDemands.map((demand) => ({
+    ...demand,
+    endDate: demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
+  }));
+
 
   if (isLoading) {
     return (
@@ -208,21 +274,21 @@ const DemandList = () => {
 
         {/* View Selector */}
         <div className="mb-6">
-          <Tabs defaultValue="grid" className="w-full">
+          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as "grid" | "table" | "calendar" | "gantt")} className="w-full">
             <TabsList className="grid w-full grid-cols-4 lg:w-auto">
               <TabsTrigger value="grid" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">Cards</span>
               </TabsTrigger>
-              <TabsTrigger value="table" className="gap-2" onClick={() => navigate("/table")}>
+              <TabsTrigger value="table" className="gap-2">
                 <Table2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Tabela</span>
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="gap-2" onClick={() => navigate("/calendar")}>
+              <TabsTrigger value="calendar" className="gap-2">
                 <CalendarIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Calendário</span>
               </TabsTrigger>
-              <TabsTrigger value="gantt" className="gap-2" onClick={() => navigate("/gantt")}>
+              <TabsTrigger value="gantt" className="gap-2">
                 <GanttChartSquare className="h-4 w-4" />
                 <span className="hidden sm:inline">Gantt</span>
               </TabsTrigger>
@@ -282,22 +348,218 @@ const DemandList = () => {
           </div>
         </div>
 
-        {/* Demands Grid */}
+        {/* Demands Display Area */}
         <div className="mb-4">
           <p className="text-sm text-muted-foreground">
             Mostrando {filteredDemands.length} de {demands?.length || 0} demandas
           </p>
         </div>
-        
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredDemands.map((demand) => (
-            <DemandCard key={demand.id} demand={demand} onEdit={handleEditDemand} onDelete={handleDeleteDemand} />
-          ))}
-        </div>
 
         {filteredDemands.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Nenhuma demanda encontrada</p>
+          </div>
+        )}
+
+        {currentView === "grid" && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredDemands.map((demand) => (
+              <DemandCard key={demand.id} demand={demand} onEdit={handleEditDemand} onDelete={handleDeleteDemand} />
+            ))}
+          </div>
+        )}
+
+        {currentView === "table" && (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("title")} className="h-8 px-2">
+                      Título
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("type")} className="h-8 px-2">
+                      Tipo
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("priority")} className="h-8 px-2">
+                      Prioridade
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("status")} className="h-8 px-2">
+                      Status
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("system")} className="h-8 px-2">
+                      Sistema
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("responsible")} className="h-8 px-2">
+                      Responsável
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort("createdAt")} className="h-8 px-2">
+                      Criado em
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedDemands.map((demand) => (
+                  <TableRow key={demand.id}>
+                    <TableCell className="font-medium">{demand.title}</TableCell>
+                    <TableCell>
+                      <Badge variant={getTypeColor(demand.type) as any}>{typeLabels[demand.type]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getPriorityColor(demand.priority) as any}>{priorityLabels[demand.priority]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(demand.status) as any}>{statusLabels[demand.status]}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{demand.system.toUpperCase()}</Badge>
+                    </TableCell>
+                    <TableCell>{demand.responsible}</TableCell>
+                    <TableCell>{format(demand.createdAt, "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {currentView === "calendar" && (
+          <div className="space-y-6">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold capitalize">
+                {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
+              </h2>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={previousMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCalendarCurrentDate(new Date())}>
+                  Hoje
+                </Button>
+                <Button variant="outline" size="sm" onClick={nextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {weekDays.map((day) => (
+                <div key={day} className="text-center font-semibold text-sm p-2">
+                  {day}
+                </div>
+              ))}
+
+              {daysInMonth.map((day) => {
+                const dayDemands = getDemandsByDate(day);
+                const isCurrentMonth = isSameMonth(day, calendarCurrentDate);
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={`min-h-[120px] p-2 border rounded-md ${!isCurrentMonth ? "opacity-50 bg-muted/20" : "bg-card"}`}
+                  >
+                    <div className="text-sm font-medium mb-1">{format(day, "d")}</div>
+                    <div className="space-y-1">
+                      {dayDemands.map((demand) => (
+                        <div
+                          key={demand.id}
+                          className="text-xs p-1 rounded bg-primary/10 hover:bg-primary/20 cursor-pointer truncate"
+                          onClick={() => handleEditDemand(demand)}
+                        >
+                          <Badge variant={getPriorityColor(demand.priority) as any} className="h-4 text-[10px] mb-1">
+                            {priorityLabels[demand.priority]}
+                          </Badge>
+                          <div className="truncate">{demand.title}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {currentView === "gantt" && (
+          <div className="space-y-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold capitalize">
+                {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
+              </h2>
+            </div>
+
+            <div className="overflow-x-auto">
+              <div className="min-w-[1200px]">
+                {/* Header with dates */}
+                <div className="flex border-b mb-4 pb-2">
+                  <div className="w-64 font-semibold">Demanda</div>
+                  <div className="flex-1 flex">
+                    {ganttDaysInMonth.map((day, index) => (
+                      <div key={index} className="flex-1 text-center text-xs text-muted-foreground">
+                        {format(day, "d")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gantt rows */}
+                <div className="space-y-2">
+                  {demandsWithDates.map((demand) => (
+                    <div key={demand.id} className="p-2 border rounded-md">
+                      <div className="flex items-center">
+                        <div className="w-64 pr-4">
+                          <div className="font-medium text-sm truncate">{demand.title}</div>
+                          <div className="flex gap-1 mt-1">
+                            <Badge variant={getPriorityColor(demand.priority) as any} className="text-xs">
+                              {priorityLabels[demand.priority]}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {statusLabels[demand.status]}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex-1 relative h-8">
+                          <div className="absolute top-0 left-0 right-0 h-full border-t border-dashed border-border" />
+                          {ganttDaysInMonth.map((_, index) => (
+                            <div
+                              key={index}
+                              className="absolute top-0 h-full border-r border-border"
+                              style={{ left: `${((index + 1) / ganttDaysInMonth.length) * 100}%` }}
+                            />
+                          ))}
+                          <div
+                            className="absolute top-1/2 -translate-y-1/2 h-6 bg-primary/80 hover:bg-primary rounded cursor-pointer transition-colors"
+                            style={getTaskPosition(demand.createdAt, demand.endDate)}
+                            title={`${format(demand.createdAt, "dd/MM")} - ${format(demand.endDate, "dd/MM")}`}
+                            onClick={() => handleEditDemand(demand)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-// import { Navigation } from "./components/Navigation"; // Removido para lazy loading
 import NotFound from "./pages/NotFound";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
@@ -12,14 +11,12 @@ const queryClient = new QueryClient();
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const DemandList = React.lazy(() => import("./pages/DemandList"));
 const KanbanBoard = React.lazy(() => import("./pages/KanbanBoard"));
-const TableView = React.lazy(() => import("./pages/TableView"));
-const CalendarView = React.lazy(() => import("./pages/CalendarView"));
-const GanttView = React.lazy(() => import("./pages/GanttView"));
+// TableView, CalendarView, GanttView são removidos pois sua lógica foi integrada em DemandList
 const Reports = React.lazy(() => import("./pages/Reports"));
 const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
 const Login = React.lazy(() => import("./pages/Login"));
-const ClientDemand = React.lazy(() => import("./pages/ClientDemand")); // Lazy load ClientDemand
+const ClientDemand = React.lazy(() => import("./pages/ClientDemand"));
 
 // Lazy load GlobalProviders
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
@@ -62,14 +59,14 @@ const AppRoutes = () => {
   return (
     <>
       {session && (
-        <Suspense fallback={null}> {/* Fallback para Navigation */}
+        <Suspense fallback={null}>
           <LazyNavigation />
         </Suspense>
       )}
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/client-demand" element={<ClientDemand />} /> {/* New public route */}
+          <Route path="/client-demand" element={<ClientDemand />} />
           <Route
             path="/"
             element={
@@ -94,30 +91,7 @@ const AppRoutes = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/table"
-            element={
-              <ProtectedRoute>
-                <TableView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <ProtectedRoute>
-                <CalendarView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/gantt"
-            element={
-              <ProtectedRoute>
-                <GanttView />
-              </ProtectedRoute>
-            }
-          />
+          {/* Rotas para TableView, CalendarView e GanttView removidas */}
           <Route
             path="/reports"
             element={
