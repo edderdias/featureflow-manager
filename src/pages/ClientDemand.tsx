@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Upload, FileText, X } from "lucide-react";
+import { Plus, Upload, FileText, X, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Demand, SystemType, Attachment } from "@/types/demand";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid'; // For unique file names
+
+// Função de debounce para limitar chamadas à API
+const debounce = (func: (...args: any[]) => void, delay: number) => {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+};
 
 const ClientDemand = () => {
   const navigate = useNavigate();
@@ -29,6 +38,8 @@ const ClientDemand = () => {
   });
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cnpjIsValid, setCnpjIsValid] = useState<boolean | null>(null); // null: not checked, true: valid, false: invalid
+  const [isCnpjValidating, setIsCnpjValidating] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -83,12 +94,67 @@ const ClientDemand = () => {
     }));
   };
 
+  const validateCnpj = async (cnpj: string) => {
+    const cleanedCnpj = cnpj.replace(/[^\d]/g, ''); // Remove non-digits
+    if (cleanedCnpj.length !== 14) { // CNPJ must have 14 digits
+      setCnpjIsValid(null); // Reset validation state if not a full CNPJ
+      return;
+    }
+
+    setIsCnpjValidating(true);
+    setCnpjIsValid(null); // Reset before new validation
+
+    try {
+      const apiUrl = `https://api.toqweb.com.br:2004/auth/LoginService/LoginCnpj?Cnpj=${cleanedCnpj}&sKey=ybHF9drnd%26FK%26UA$t*XSDu%23mfehqfg`;
+      const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Assuming the API returns a JSON object with a 'success' or 'isValid' boolean
+      // or the data itself is a boolean. Adjust this logic if the API response differs.
+      const isValid = typeof data === 'boolean' ? data : (data.isValid === true || data.success === true);
+
+      setCnpjIsValid(isValid);
+      if (!isValid) {
+        toast.error("CNPJ não cadastrado na nossa base de dados.");
+      } else {
+        toast.success("CNPJ validado com sucesso!");
+      }
+    } catch (error) {
+      console.error("Error validating CNPJ:", error);
+      toast.error("Erro ao validar CNPJ. Tente novamente mais tarde.");
+      setCnpjIsValid(false); // Assume invalid on error
+    } finally {
+      setIsCnpjValidating(false);
+    }
+  };
+
+  // Debounced version of validateCnpj
+  const debouncedValidateCnpj = useCallback(debounce(validateCnpj, 800), []);
+
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData({ ...formData, client_cnpj: value });
+    debouncedValidateCnpj(value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     if (!formData.title || !formData.description || !formData.system || !formData.client_cnpj || !formData.client_email) {
       toast.error("Por favor, preencha todos os campos obrigatórios (Título, Descrição, Sistema, CNPJ, E-mail).");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Re-validate CNPJ on submit to ensure it's current
+    await validateCnpj(formData.client_cnpj || "");
+    if (!cnpjIsValid) {
+      toast.error("Por favor, corrija o CNPJ antes de enviar a demanda.");
       setIsSubmitting(false);
       return;
     }
@@ -122,8 +188,8 @@ const ClientDemand = () => {
           status: demandToSave.status,
           system: demandToSave.system,
           responsible: demandToSave.responsible,
-          created_at: demandToSave.createdAt.toISOString(),
-          updated_at: demandToSave.updatedAt.toISOString(),
+          created_at: demandToSave.createdAt?.toISOString(),
+          updated_at: demandToSave.updatedAt?.toISOString(),
           client_cnpj: demandToSave.client_cnpj,
           client_email: demandToSave.client_email,
           client_name: demandToSave.client_name,
@@ -152,6 +218,7 @@ const ClientDemand = () => {
         attachments: [],
       });
       setFileToUpload(null);
+      setCnpjIsValid(null); // Reset CNPJ validation state
       navigate("/"); // Redirect to home or a confirmation page
     }
     setIsSubmitting(false);
@@ -182,13 +249,34 @@ const ClientDemand = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client_cnpj">CNPJ *</Label>
-                <Input
-                  id="client_cnpj"
-                  value={formData.client_cnpj || ""}
-                  onChange={(e) => setFormData({ ...formData, client_cnpj: e.target.value })}
-                  placeholder="00.000.000/0000-00"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="client_cnpj"
+                    value={formData.client_cnpj || ""}
+                    onChange={handleCnpjChange}
+                    placeholder="00.000.000/0000-00"
+                    required
+                    className={
+                      cnpjIsValid === true
+                        ? "border-green-500 focus-visible:ring-green-500"
+                        : cnpjIsValid === false
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                  {isCnpjValidating && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+                  )}
+                  {cnpjIsValid === true && !isCnpjValidating && (
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                  )}
+                  {cnpjIsValid === false && !isCnpjValidating && (
+                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                  )}
+                </div>
+                {cnpjIsValid === false && (
+                  <p className="text-sm text-red-500">CNPJ não cadastrado na nossa base de dados.</p>
+                )}
               </div>
             </div>
 
@@ -290,7 +378,7 @@ const ClientDemand = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || isCnpjValidating || cnpjIsValid === false}>
               {isSubmitting ? (
                 <>
                   <Plus className="h-4 w-4 mr-2 animate-spin" /> Enviando Demanda...
