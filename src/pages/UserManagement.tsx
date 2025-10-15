@@ -61,7 +61,7 @@ const UserManagement = () => {
         headers: { "Content-Type": "application/json" },
       });
 
-      if (error) throw error;
+      if (error) throw error; // This error is a Supabase client error, not the Edge Function's response body error
       return data;
     },
     onSuccess: () => {
@@ -71,8 +71,20 @@ const UserManagement = () => {
       setNewLastName("");
       setNewEmail("");
     },
-    onError: (err) => {
-      toast.error(`Erro ao enviar convite: ${err.message}`);
+    onError: (err: any) => { // Usar 'any' temporariamente para acessar 'details'
+      let displayMessage = `Erro ao enviar convite: ${err.message}`;
+      if (err.details) {
+        try {
+          const errorDetails = JSON.parse(err.details);
+          if (errorDetails.error) {
+            displayMessage = `Erro ao enviar convite: ${errorDetails.error}`;
+          }
+        } catch (parseError) {
+          // Se 'details' não for JSON, usa o texto bruto
+          displayMessage = `Erro ao enviar convite: ${err.details}`;
+        }
+      }
+      toast.error(displayMessage);
     },
   });
 
