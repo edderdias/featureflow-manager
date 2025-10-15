@@ -227,42 +227,24 @@ const ClientDemand = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="system">Sistema Afetado *</Label>
-                <Select
-                  value={formData.system}
-                  onValueChange={(value) => setFormData({ ...formData, system: value as SystemType })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o sistema" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {systemOptions.map((system) => (
-                      <SelectItem key={system} value={system}>
-                        {system.toUpperCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo de Demanda</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as DemandType })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="feature">Novo Recurso</SelectItem>
-                    <SelectItem value="bug">Bug</SelectItem>
-                    <SelectItem value="repair">Reparo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="system">Sistema Afetado *</Label>
+              <Select
+                value={formData.system}
+                onValueChange={(value) => setFormData({ ...formData, system: value as SystemType })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o sistema" />
+                </SelectTrigger>
+                <SelectContent>
+                  {systemOptions.map((system) => (
+                    <SelectItem key={system} value={system}>
+                      {system.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
