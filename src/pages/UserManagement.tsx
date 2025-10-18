@@ -95,8 +95,7 @@ const UserManagement = () => {
 
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "PATCH", // Usando o novo método PATCH
-        body: JSON.stringify({ userId: id, first_name, last_name, avatar_url, role, password }),
-        headers: { "Content-Type": "application/json" },
+        body: { userId: id, first_name, last_name, avatar_url, role, password }, // Passar como objeto
       });
 
       if (error) throw error;
@@ -118,8 +117,7 @@ const UserManagement = () => {
       if (!user) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "DELETE",
-        body: JSON.stringify({ userId }),
-        headers: { "Content-Type": "application/json" },
+        body: { userId }, // Passar como objeto
       });
 
       if (error) throw error;
