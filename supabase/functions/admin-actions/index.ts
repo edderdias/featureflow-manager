@@ -152,7 +152,17 @@ serve(async (req) => {
         status: 200,
       });
     } else if (req.method === "PATCH") { // Novo método PATCH para atualização
-      const { userId, password, first_name, last_name, avatar_url, role } = await req.json();
+      let requestBody;
+      try {
+        requestBody = await req.json();
+      } catch (jsonError) {
+        console.error("Edge Function Error: Failed to parse PATCH request body as JSON.", jsonError);
+        return new Response(JSON.stringify({ error: `Invalid JSON in request body for PATCH: ${jsonError.message}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+      const { userId, password, first_name, last_name, avatar_url, role } = requestBody;
 
       if (!userId) {
         return new Response(JSON.stringify({ error: "User ID is required" }), {
