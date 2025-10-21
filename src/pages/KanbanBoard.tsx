@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner"; // Import toast for notifications
+import { DemandDialog } from "@/components/DemandDialog"; // Importar DemandDialog
 
 // DND imports
 import {
@@ -23,7 +24,7 @@ import {
   DragEndEvent,
   DragOverlay,
   UniqueIdentifier,
-  useDroppable, // Adicionado: Importação do useDroppable
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -35,9 +36,10 @@ import { CSS } from "@dnd-kit/utilities";
 // Component for a draggable DemandCard
 interface DraggableDemandCardProps {
   demand: Demand;
+  onEdit: (demand: Demand) => void; // Adicionado prop onEdit
 }
 
-const DraggableDemandCard = ({ demand }: DraggableDemandCardProps) => {
+const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
   const {
     attributes,
     listeners,
@@ -58,13 +60,21 @@ const DraggableDemandCard = ({ demand }: DraggableDemandCardProps) => {
   const totalItems = demand.checklist?.length || 0;
   const checklistProgress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Previne que o clique seja tratado como início de arrasto se o drag não estiver ativo
+    if (!isDragging) {
+      onEdit(demand);
+    }
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="cursor-grab hover:shadow-lg transition-all duration-300 group mb-3" // Added mb-3 for spacing
+      {...listeners} // Listeners para arrastar
+      onClick={handleClick} // Handler para clique simples
+      className="cursor-grab hover:shadow-lg transition-all duration-300 group mb-3"
     >
       {demand.tags && demand.tags.length > 0 && (
         <div className="px-4 pt-3 pb-0">
@@ -155,9 +165,10 @@ interface KanbanColumnProps {
   id: DemandStatus;
   title: string;
   demands: Demand[];
+  onEdit: (demand: Demand) => void; // Adicionado prop onEdit
 }
 
-const KanbanColumn = ({ id, title, demands }: KanbanColumnProps) => {
+const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
   const { setNodeRef } = useDroppable({ id });
 
   return (
@@ -172,7 +183,7 @@ const KanbanColumn = ({ id, title, demands }: KanbanColumnProps) => {
       <div className="space-y-3 flex-1">
         <SortableContext items={demands.map(d => d.id)}>
           {demands.map((demand) => (
-            <DraggableDemandCard key={demand.id} demand={demand} />
+            <DraggableDemandCard key={demand.id} demand={demand} onEdit={onEdit} />
           ))}
         </SortableContext>
 
@@ -193,10 +204,11 @@ const KanbanBoard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // Estado para o diálogo de edição
+  const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined); // Estado para a demanda sendo editada
 
   const fetchDemands = async () => {
     if (!user) return [];
-    // Removed .eq("user_id", user.id) to fetch all demands
     const { data, error } = await supabase
       .from("demands")
       .select("*");
@@ -206,7 +218,9 @@ const KanbanBoard = () => {
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
-      storyPoints: d.story_points, // Ensure storyPoints is mapped
+      storyPoints: d.story_points,
+      completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
+      creatorName: d.creator_name,
     })) as Demand[];
   };
 
@@ -216,13 +230,23 @@ const KanbanBoard = () => {
     enabled: !!user,
   });
 
-  const updateDemandStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: DemandStatus }) => {
+  const updateDemandMutation = useMutation({
+    mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
+
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
+
       const { data, error } = await supabase
         .from("demands")
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq("id", id)
+        .update({
+          ...rest,
+          updated_at: (updatedAt || new Date()).toISOString(),
+          due_date: dueDate ? dueDate.toISOString() : null,
+          completed_at: completedAt ? completedAt.toISOString() : null,
+          story_points: storyPoints,
+          creator_name: creatorName,
+        })
+        .eq("id", updatedDemandData.id)
         .select()
         .single();
       if (error) throw error;
@@ -230,15 +254,31 @@ const KanbanBoard = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Status da demanda atualizado!");
+      toast.success("Demanda atualizada com sucesso!");
+      setIsDialogOpen(false);
+      setEditingDemand(undefined);
     },
     onError: (err) => {
-      toast.error(`Erro ao atualizar status: ${err.message}`);
+      toast.error(`Erro ao atualizar demanda: ${err.message}`);
     },
   });
 
+  const handleEditDemand = (demand: Demand) => {
+    setEditingDemand(demand);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveDemand = (demandData: Partial<Demand>) => {
+    updateDemandMutation.mutate(demandData);
+  };
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 250, // Ativa o arrasto após 250ms de clique e segurar
+        tolerance: 5, // Ou após mover 5px
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -260,11 +300,9 @@ const KanbanBoard = () => {
     const draggedDemandId = active.id as string;
     const newStatus = over.id as DemandStatus;
 
-    // Find the demand being dragged
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
 
     if (draggedDemand && draggedDemand.status !== newStatus) {
-      // Optimistic update
       queryClient.setQueryData(["demands", user?.id], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
         return oldDemands.map(d =>
@@ -272,8 +310,7 @@ const KanbanBoard = () => {
         );
       });
 
-      // Call mutation to update status in DB
-      updateDemandStatusMutation.mutate({ id: draggedDemandId, status: newStatus });
+      updateDemandMutation.mutate({ id: draggedDemandId, status: newStatus });
     }
     setActiveDragId(null);
   };
@@ -319,16 +356,26 @@ const KanbanBoard = () => {
                 id={status}
                 title={statusLabels[status]}
                 demands={getDemandsByStatus(status)}
+                onEdit={handleEditDemand} // Passar onEdit para a coluna
               />
             ))}
           </div>
 
           <DragOverlay>
             {activeDemand ? (
-              <DraggableDemandCard demand={activeDemand} />
+              <DraggableDemandCard demand={activeDemand} onEdit={handleEditDemand} />
             ) : null}
           </DragOverlay>
         </DndContext>
+
+        {editingDemand && (
+          <DemandDialog
+            demand={editingDemand}
+            onSave={handleSaveDemand}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+          />
+        )}
       </div>
     </div>
   );
