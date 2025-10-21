@@ -12,11 +12,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns"; // Adicionado startOfWeek e endOfWeek
+import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval } from "date-fns"; // Adicionado isWithinInterval
 import { ptBR } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels, getStatusColor } from "@/lib/demandUtils";
+import { DateRangePicker } from "@/components/DateRangePicker"; // Novo import
+import { DateRange } from "react-day-picker"; // Novo import
 
 const DemandList = () => {
   const navigate = useNavigate();
@@ -37,6 +39,9 @@ const DemandList = () => {
 
   // State for Calendar View
   const [calendarCurrentDate, setCalendarCurrentDate] = useState(new Date());
+
+  // Novo estado para o intervalo de datas
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const fetchDemands = async () => {
     if (!user) return [];
@@ -205,7 +210,12 @@ const DemandList = () => {
     const matchesStatus = filterStatus === "all" || demand.status === filterStatus;
     const matchesType = filterType === "all" || demand.type === filterType;
 
-    return matchesSearch && matchesPriority && matchesStatus && matchesType;
+    // Novo filtro por intervalo de datas
+    const matchesDateRange = !dateRange?.from || !dateRange?.to || (
+      demand.createdAt && isWithinInterval(demand.createdAt, { start: dateRange.from, end: dateRange.to })
+    );
+
+    return matchesSearch && matchesPriority && matchesStatus && matchesType && matchesDateRange;
   });
 
   // --- Table View Logic ---
@@ -296,18 +306,21 @@ const DemandList = () => {
               Visualize suas demandas de diferentes formas
             </p>
           </div>
-          <DemandDialog
-            demand={editingDemand}
-            onSave={handleSaveDemand}
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            trigger={
-              <Button size="lg" className="gap-2">
-                <Plus className="h-5 w-5" />
-                Nova Demanda
-              </Button>
-            }
-          />
+          <div className="flex flex-col sm:flex-row items-center gap-4"> {/* Novo wrapper div para alinhamento */}
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} /> {/* Novo componente */}
+            <DemandDialog
+              demand={editingDemand}
+              onSave={handleSaveDemand}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              trigger={
+                <Button size="lg" className="gap-2">
+                  <Plus className="h-5 w-5" />
+                  Nova Demanda
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         {/* View Selector */}
