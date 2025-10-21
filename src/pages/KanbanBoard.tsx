@@ -315,19 +315,36 @@ const KanbanBoard = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over) return;
+    if (!over) {
+      setActiveDragId(null);
+      return;
+    }
 
     const draggedDemandId = active.id as string;
-    const newStatus = over.id as DemandStatus;
+    let newStatus: DemandStatus | undefined;
+
+    // Check if the drop target is a column itself (droppable area)
+    if (columns.includes(over.id as DemandStatus)) {
+      newStatus = over.id as DemandStatus;
+      console.log("Dropped directly onto column:", newStatus);
+    } else if (over.data.current?.sortable?.containerId) {
+      // If dropped onto a sortable item, get the ID of its parent container (the column)
+      newStatus = over.data.current.sortable.containerId as DemandStatus;
+      console.log("Dropped onto sortable item, parent column:", newStatus);
+    } else {
+      console.error("Could not determine new status for the demand. over.id:", over.id, "over.data.current:", over.data.current);
+      setActiveDragId(null);
+      return;
+    }
 
     console.log("Dragged Demand ID:", draggedDemandId);
-    console.log("New Status (over.id):", newStatus);
+    console.log("Determined New Status:", newStatus);
 
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
 
     if (draggedDemand && draggedDemand.status !== newStatus) {
       console.log("Original Demand Status:", draggedDemand.status);
-      
+
       // Optimistic update
       queryClient.setQueryData(["demands", user?.id], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
@@ -336,23 +353,19 @@ const KanbanBoard = () => {
         );
       });
 
-      // Construct the full updated demand object, preserving all other fields
       const updatedDemand: Partial<Demand> = {
-        ...draggedDemand, // Spread all existing properties
-        status: newStatus, // Override status with the new column's status
-        updatedAt: new Date(), // Update the updatedAt timestamp
+        ...draggedDemand,
+        status: newStatus,
+        updatedAt: new Date(),
       };
 
-      // Special handling for completedAt when moving to 'done'
       if (newStatus === "done" && !draggedDemand.completedAt) {
         updatedDemand.completedAt = new Date();
       } else if (newStatus !== "done" && draggedDemand.completedAt) {
-        // If moved out of 'done', clear completedAt
         updatedDemand.completedAt = undefined;
       }
 
       console.log("Constructed updatedDemand object sent to mutate:", updatedDemand);
-
       updateDemandMutation.mutate(updatedDemand);
     }
     setActiveDragId(null);
