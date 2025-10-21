@@ -233,53 +233,37 @@ const KanbanBoard = () => {
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
+      if (!updatedDemandData.id) throw new Error("Demand ID is required for update.");
+      if (!updatedDemandData.status) throw new Error("Demand status cannot be empty."); // Ensure status is always present
 
-      const {
-        id,
-        title,
-        description,
-        type,
-        priority,
-        status, // Explicitamente extraído
-        system,
-        responsible,
-        dueDate,
-        completedAt,
-        storyPoints,
-        sprint,
-        checklist,
-        attachments,
-        tags,
-        client_cnpj,
-        client_email,
-        client_name,
-        creatorName,
-      } = updatedDemandData;
+      const payload = {
+        title: updatedDemandData.title,
+        description: updatedDemandData.description,
+        type: updatedDemandData.type,
+        priority: updatedDemandData.priority,
+        status: updatedDemandData.status, // This is the critical field
+        system: updatedDemandData.system,
+        responsible: updatedDemandData.responsible,
+        due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
+        completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
+        story_points: updatedDemandData.storyPoints ?? null, // Use nullish coalescing for optional fields
+        sprint: updatedDemandData.sprint ?? null,
+        checklist: updatedDemandData.checklist ?? [], // Ensure it's an array, not null
+        attachments: updatedDemandData.attachments ?? [], // Ensure it's an array, not null
+        tags: updatedDemandData.tags ?? [], // Ensure it's an array, not null
+        client_cnpj: updatedDemandData.client_cnpj ?? null,
+        client_email: updatedDemandData.client_email ?? null,
+        client_name: updatedDemandData.client_name ?? null,
+        creator_name: updatedDemandData.creatorName ?? null,
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log("Payload being sent to Supabase:", payload); // Log para depuração
 
       const { data, error } = await supabase
         .from("demands")
-        .update({
-          title: title,
-          description: description,
-          type: type,
-          priority: priority,
-          status: status, // Explicitamente definido
-          system: system,
-          responsible: responsible,
-          due_date: dueDate ? dueDate.toISOString() : null,
-          completed_at: completedAt ? completedAt.toISOString() : null,
-          story_points: storyPoints === undefined ? null : storyPoints,
-          sprint: sprint,
-          checklist: checklist,
-          attachments: attachments,
-          tags: tags,
-          client_cnpj: client_cnpj,
-          client_email: client_email,
-          client_name: client_name,
-          creator_name: creatorName === undefined ? null : creatorName,
-          updated_at: new Date().toISOString(), // Sempre atualiza updatedAt
-        })
-        .eq("id", id)
+        .update(payload)
+        .eq("id", updatedDemandData.id)
         .select()
         .single();
       if (error) throw error;
@@ -358,6 +342,8 @@ const KanbanBoard = () => {
         // If moved out of 'done', clear completedAt
         updatedDemand.completedAt = undefined;
       }
+
+      console.log("Updated Demand object sent to mutate:", updatedDemand); // Log para depuração
 
       updateDemandMutation.mutate(updatedDemand);
     }
