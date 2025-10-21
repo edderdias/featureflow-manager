@@ -232,21 +232,24 @@ const KanbanBoard = () => {
 
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
+      console.log("Received updatedDemandData in mutation:", updatedDemandData);
+      console.log("Status received in mutation:", updatedDemandData.status);
+
       if (!user) throw new Error("Usuário não autenticado");
       if (!updatedDemandData.id) throw new Error("Demand ID is required for update.");
       if (!updatedDemandData.status) throw new Error("Demand status cannot be empty."); // Ensure status is always present
 
       const payload = {
-        title: updatedDemandData.title,
-        description: updatedDemandData.description,
-        type: updatedDemandData.type,
-        priority: updatedDemandData.priority,
-        status: updatedDemandData.status, // This is the critical field
-        system: updatedDemandData.system,
-        responsible: updatedDemandData.responsible,
+        title: updatedDemandData.title ?? null,
+        description: updatedDemandData.description ?? null,
+        type: updatedDemandData.type ?? null,
+        priority: updatedDemandData.priority ?? null,
+        status: updatedDemandData.status, // This is the critical field, must be present
+        system: updatedDemandData.system ?? null,
+        responsible: updatedDemandData.responsible ?? null,
         due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
         completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
-        story_points: updatedDemandData.storyPoints ?? null, // Use nullish coalescing for optional fields
+        story_points: updatedDemandData.storyPoints ?? null,
         sprint: updatedDemandData.sprint ?? null,
         checklist: updatedDemandData.checklist ?? [], // Ensure it's an array, not null
         attachments: updatedDemandData.attachments ?? [], // Ensure it's an array, not null
@@ -255,7 +258,7 @@ const KanbanBoard = () => {
         client_email: updatedDemandData.client_email ?? null,
         client_name: updatedDemandData.client_name ?? null,
         creator_name: updatedDemandData.creatorName ?? null,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(), // Always update updatedAt
       };
 
       console.log("Payload being sent to Supabase:", payload); // Log para depuração
@@ -317,9 +320,14 @@ const KanbanBoard = () => {
     const draggedDemandId = active.id as string;
     const newStatus = over.id as DemandStatus;
 
+    console.log("Dragged Demand ID:", draggedDemandId);
+    console.log("New Status (over.id):", newStatus);
+
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
 
     if (draggedDemand && draggedDemand.status !== newStatus) {
+      console.log("Original Demand Status:", draggedDemand.status);
+      
       // Optimistic update
       queryClient.setQueryData(["demands", user?.id], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
@@ -331,7 +339,7 @@ const KanbanBoard = () => {
       // Construct the full updated demand object, preserving all other fields
       const updatedDemand: Partial<Demand> = {
         ...draggedDemand, // Spread all existing properties
-        status: newStatus, // Override status
+        status: newStatus, // Override status with the new column's status
         updatedAt: new Date(), // Update the updatedAt timestamp
       };
 
@@ -343,7 +351,7 @@ const KanbanBoard = () => {
         updatedDemand.completedAt = undefined;
       }
 
-      console.log("Updated Demand object sent to mutate:", updatedDemand); // Log para depuração
+      console.log("Constructed updatedDemand object sent to mutate:", updatedDemand);
 
       updateDemandMutation.mutate(updatedDemand);
     }
