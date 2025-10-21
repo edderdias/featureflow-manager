@@ -98,7 +98,7 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Excluir creatorName da atualização, pois deve ser imutável após a criação
+      // Agora, creatorName é incluído na atualização
       const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
@@ -109,6 +109,7 @@ const DemandList = () => {
           due_date: dueDate ? dueDate.toISOString() : null,
           completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
+          creator_name: creatorName, // Incluir creatorName na atualização
         })
         .eq("id", updatedDemandData.id)
         .select()

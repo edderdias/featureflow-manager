@@ -247,8 +247,9 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               <Input
                 id="creatorName"
                 value={formData.creatorName || ""}
-                readOnly
-                className="bg-muted/50"
+                onChange={(e) => setFormData({ ...formData, creatorName: e.target.value })}
+                placeholder="Nome do criador"
+                // Removido readOnly e bg-muted/50 para permitir edição
               />
             </div>
 
