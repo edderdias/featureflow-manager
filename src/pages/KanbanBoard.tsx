@@ -234,7 +234,7 @@ const KanbanBoard = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
+      const { id, dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
@@ -243,10 +243,10 @@ const KanbanBoard = () => {
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
           completed_at: completedAt ? completedAt.toISOString() : null,
-          story_points: storyPoints,
-          creator_name: creatorName,
+          story_points: storyPoints === undefined ? null : storyPoints, // Explicitly set to null if undefined
+          creator_name: creatorName === undefined ? null : creatorName, // Explicitly set to null if undefined
         })
-        .eq("id", updatedDemandData.id)
+        .eq("id", id)
         .select()
         .single();
       if (error) throw error;
@@ -303,6 +303,7 @@ const KanbanBoard = () => {
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
 
     if (draggedDemand && draggedDemand.status !== newStatus) {
+      // Optimistic update
       queryClient.setQueryData(["demands", user?.id], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
         return oldDemands.map(d =>
@@ -310,7 +311,22 @@ const KanbanBoard = () => {
         );
       });
 
-      updateDemandMutation.mutate({ id: draggedDemandId, status: newStatus });
+      // Construct the full updated demand object, preserving all other fields
+      const updatedDemand: Partial<Demand> = {
+        ...draggedDemand, // Spread all existing properties
+        status: newStatus, // Override status
+        updatedAt: new Date(), // Update the updatedAt timestamp
+      };
+
+      // Special handling for completedAt when moving to 'done'
+      if (newStatus === "done" && !draggedDemand.completedAt) {
+        updatedDemand.completedAt = new Date();
+      } else if (newStatus !== "done" && draggedDemand.completedAt) {
+        // If moved out of 'done', clear completedAt
+        updatedDemand.completedAt = undefined;
+      }
+
+      updateDemandMutation.mutate(updatedDemand);
     }
     setActiveDragId(null);
   };
