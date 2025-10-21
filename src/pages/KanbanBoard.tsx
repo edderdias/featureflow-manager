@@ -234,17 +234,50 @@ const KanbanBoard = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { id, dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
+      const {
+        id,
+        title,
+        description,
+        type,
+        priority,
+        status, // Explicitamente extraído
+        system,
+        responsible,
+        dueDate,
+        completedAt,
+        storyPoints,
+        sprint,
+        checklist,
+        attachments,
+        tags,
+        client_cnpj,
+        client_email,
+        client_name,
+        creatorName,
+      } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
         .update({
-          ...rest,
-          updated_at: (updatedAt || new Date()).toISOString(),
+          title: title,
+          description: description,
+          type: type,
+          priority: priority,
+          status: status, // Explicitamente definido
+          system: system,
+          responsible: responsible,
           due_date: dueDate ? dueDate.toISOString() : null,
           completed_at: completedAt ? completedAt.toISOString() : null,
-          story_points: storyPoints === undefined ? null : storyPoints, // Explicitly set to null if undefined
-          creator_name: creatorName === undefined ? null : creatorName, // Explicitly set to null if undefined
+          story_points: storyPoints === undefined ? null : storyPoints,
+          sprint: sprint,
+          checklist: checklist,
+          attachments: attachments,
+          tags: tags,
+          client_cnpj: client_cnpj,
+          client_email: client_email,
+          client_name: client_name,
+          creator_name: creatorName === undefined ? null : creatorName,
+          updated_at: new Date().toISOString(), // Sempre atualiza updatedAt
         })
         .eq("id", id)
         .select()
