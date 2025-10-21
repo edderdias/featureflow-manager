@@ -10,11 +10,11 @@ import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText } from "lucide
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // Importar hooks do TanStack Query
-import { supabase } from "@/integrations/supabase/client"; // Importar cliente Supabase
-import { useAuth } from "@/integrations/supabase/auth"; // Importar hook de autenticação
-import { toast } from "sonner"; // Importar toast para notificações
-import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/integrations/supabase/auth";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface DemandDialogProps {
   demand?: Demand;
@@ -104,7 +104,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       });
     }
     setStatusError(null); // Limpa o erro de status ao abrir/fechar o diálogo
-  }, [demand, open, currentUserName, user?.email]); // Adicionado user?.email como dependência
+  }, [demand, open, currentUserName, user?.email]);
 
   // Query para buscar tags existentes do Supabase
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
@@ -146,6 +146,11 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     if (!formData.status) {
       setStatusError("O status da demanda é obrigatório.");
       toast.error("Por favor, selecione um status para a demanda.");
+      return;
+    }
+    // Adiciona validação para creatorEmail se o usuário estiver logado
+    if (user && !formData.creatorEmail) {
+      toast.error("O e-mail do criador é obrigatório.");
       return;
     }
     setStatusError(null); // Limpa o erro se a validação passar
