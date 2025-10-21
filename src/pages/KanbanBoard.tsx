@@ -191,7 +191,7 @@ const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
       </div>
 
       <div className="space-y-3 flex-1">
-        <SortableContext items={demands.map(d => d.id)}>
+        <SortableContext items={demands.map(d => d.id)} id={id}> {/* Explicitamente definindo o id aqui */}
           {demands.map((demand) => (
             <DraggableDemandCard key={demand.id} demand={demand} onEdit={onEdit} />
           ))}
@@ -336,7 +336,7 @@ const KanbanBoard = () => {
     // Check if the drop target is a column itself (droppable area)
     if (columns.includes(over.id as DemandStatus)) {
       newStatus = over.id as DemandStatus;
-      console.log("Dropped directly onto column:", newStatus);
+      console.log("Dropped directly onto column (empty area or between items):", newStatus);
     } else if (over.data.current?.sortable?.containerId) {
       // If dropped onto a sortable item, get the ID of its parent container (the column)
       newStatus = over.data.current.sortable.containerId as DemandStatus;
