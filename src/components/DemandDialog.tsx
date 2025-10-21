@@ -72,6 +72,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       createdAt: new Date(),
       dueDate: new Date(),
       creatorName: currentUserName,
+      creatorEmail: user?.email, // Inicializa creatorEmail com o e-mail do usuário logado para novas demandas
     }
   );
 
@@ -99,10 +100,11 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         createdAt: new Date(),
         dueDate: new Date(),
         creatorName: currentUserName,
+        creatorEmail: user?.email, // Garante que o email do criador seja preenchido para novas demandas
       });
     }
     setStatusError(null); // Limpa o erro de status ao abrir/fechar o diálogo
-  }, [demand, open, currentUserName]);
+  }, [demand, open, currentUserName, user?.email]); // Adicionado user?.email como dependência
 
   // Query para buscar tags existentes do Supabase
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
@@ -233,6 +235,10 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     });
   };
 
+  // Determina qual e-mail exibir e qual rótulo usar
+  const displayEmail = formData.creatorEmail || formData.client_email || "";
+  const emailLabel = formData.creatorEmail ? "E-mail do Criador" : (formData.client_email ? "E-mail do Cliente" : "E-mail");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -262,13 +268,13 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="loggedInUserEmail">E-mail do Usuário Logado</Label>
+              <Label htmlFor="creatorEmail">{emailLabel}</Label>
               <Input
-                id="loggedInUserEmail"
-                value={user?.email || ""}
+                id="creatorEmail"
+                value={displayEmail}
                 readOnly
                 className="bg-muted/50 cursor-not-allowed"
-                placeholder="E-mail do usuário logado"
+                placeholder="E-mail do criador ou cliente"
               />
             </div>
 

@@ -49,4 +49,5 @@ export interface Demand {
   client_email?: string; // New field
   client_name?: string; // New field
   creatorName?: string; // Novo campo para o nome do criador da demanda
+  creatorEmail?: string; // Novo campo para o e-mail do criador da demanda
 }

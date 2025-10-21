@@ -57,6 +57,7 @@ const DemandList = () => {
       completedAt: d.completed_at ? new Date(d.completed_at) : undefined, // Mapear completed_at
       storyPoints: d.story_points,
       creatorName: d.creator_name, // Mapear o novo campo creatorName
+      creatorEmail: d.creator_email, // Mapear o novo campo creatorEmail
     })) as Demand[];
   };
 
@@ -70,7 +71,7 @@ const DemandList = () => {
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = newDemandData; // Incluir creatorName
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = newDemandData; // Incluir creatorEmail
 
       const { data, error } = await supabase
         .from("demands")
@@ -83,6 +84,7 @@ const DemandList = () => {
           completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
           creator_name: creatorName, // Salvar creatorName
+          creator_email: creatorEmail, // Salvar creatorEmail
         })
         .select()
         .single();
@@ -103,8 +105,8 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Agora, creatorName é incluído na atualização
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
+      // Agora, creatorName e creatorEmail são incluídos na atualização
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
@@ -115,6 +117,7 @@ const DemandList = () => {
           completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
           creator_name: creatorName, // Incluir creatorName na atualização
+          creator_email: creatorEmail, // Incluir creatorEmail na atualização
         })
         .eq("id", updatedDemandData.id)
         .select()
@@ -204,7 +207,9 @@ const DemandList = () => {
       demand.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase()));
+      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (demand.creatorName?.toLowerCase().includes(searchTerm.toLowerCase())) || // Incluir creatorName na busca
+      (demand.creatorEmail?.toLowerCase().includes(searchTerm.toLowerCase())); // Incluir creatorEmail na busca
 
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
     const matchesStatus = filterStatus === "all" || demand.status === filterStatus;
