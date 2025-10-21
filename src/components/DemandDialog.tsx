@@ -262,6 +262,17 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="loggedInUserEmail">E-mail do Usuário Logado</Label>
+              <Input
+                id="loggedInUserEmail"
+                value={user?.email || ""}
+                readOnly
+                className="bg-muted/50 cursor-not-allowed"
+                placeholder="E-mail do usuário logado"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
               <Input
                 id="title"
