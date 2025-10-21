@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
+import TechnicianProtectedRoute from "./components/TechnicianProtectedRoute"; // Importar TechnicianProtectedRoute
 
 const queryClient = new QueryClient();
 
@@ -11,7 +12,6 @@ const queryClient = new QueryClient();
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const DemandList = React.lazy(() => import("./pages/DemandList"));
 const KanbanBoard = React.lazy(() => import("./pages/KanbanBoard"));
-// TableView, CalendarView, GanttView são removidos pois sua lógica foi integrada em DemandList
 const Reports = React.lazy(() => import("./pages/Reports"));
 const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
@@ -91,29 +91,28 @@ const AppRoutes = () => {
               </ProtectedRoute>
             }
           />
-          {/* Rotas para TableView, CalendarView e GanttView removidas */}
           <Route
             path="/reports"
             element={
-              <ProtectedRoute>
+              <TechnicianProtectedRoute> {/* Apenas técnicos e admins */}
                 <Reports />
-              </ProtectedRoute>
+              </TechnicianProtectedRoute>
             }
           />
           <Route
             path="/tags"
             element={
-              <ProtectedRoute>
+              <TechnicianProtectedRoute> {/* Apenas técnicos e admins */}
                 <TagManagement />
-              </ProtectedRoute>
+              </TechnicianProtectedRoute>
             }
           />
           <Route
             path="/users"
             element={
-              <ProtectedRoute>
+              <AdminProtectedRoute> {/* Apenas admins */}
                 <UserManagement />
-              </ProtectedRoute>
+              </AdminProtectedRoute>
             }
           />
           <Route path="*" element={<NotFound />} />

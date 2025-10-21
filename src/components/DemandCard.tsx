@@ -6,6 +6,7 @@ import { Calendar, User, Wrench, CheckCircle2 } from "lucide-react"; // Adiciona
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
+import { useAuth } from "@/integrations/supabase/auth"; // Importar useAuth
 
 interface DemandCardProps {
   demand: Demand;
@@ -15,6 +16,7 @@ interface DemandCardProps {
 }
 
 export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardProps) => {
+  const { userRole } = useAuth(); // Obter o papel do usuário
   const displayDate = demand.status === "done" && demand.completedAt
     ? demand.completedAt
     : demand.createdAt;
@@ -64,7 +66,7 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
             Editar
           </Button>
         )}
-        {onDelete && (
+        {onDelete && userRole === "admin" && ( // Apenas admins podem excluir
           <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1 min-w-[100px]">
             Excluir
           </Button>

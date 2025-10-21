@@ -11,26 +11,36 @@ import { Demand } from "@/types/demand";
 import { Link } from "react-router-dom"; // Added Link
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   const fetchDemands = async () => {
-    if (!user) return []; // Still require user to be logged in to fetch any demands
+    if (!user) return [];
 
-    // Alterado: Removido .eq("user_id", user.id) para buscar todas as demandas
-    const { data, error } = await supabase
-      .from("demands")
-      .select("*");
+    let query = supabase.from("demands").select("*");
+
+    // Se o papel for 'user', filtra apenas as demandas criadas por ele
+    if (userRole === "user") {
+      query = query.eq("user_id", user.id);
+    }
+    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
+    // pois as políticas RLS já permitem que vejam todas as demandas.
+
+    const { data, error } = await query;
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
+      completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
+      storyPoints: d.story_points,
+      creatorName: d.creator_name,
+      creatorEmail: d.creator_email,
     })) as Demand[];
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id],
+    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
     queryFn: fetchDemands,
     enabled: !!user,
   });

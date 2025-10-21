@@ -18,21 +18,30 @@ interface Tag {
 
 const TagManagement = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth(); // Obter userRole
   const [newTagName, setNewTagName] = useState("");
 
   const fetchTags = async () => {
     if (!user) return [];
-    const { data, error } = await supabase
+
+    let query = supabase
       .from("tags")
-      .select("*")
-      .eq("user_id", user.id);
+      .select("*");
+    
+    // Se o papel não for 'admin', filtra apenas as tags criadas pelo usuário
+    if (userRole !== "admin") {
+      query = query.eq("user_id", user.id);
+    }
+    // Para 'admin', nenhuma filtragem adicional é necessária,
+    // pois as políticas RLS já permitem que vejam todas as tags.
+
+    const { data, error } = await query;
     if (error) throw error;
     return data as Tag[];
   };
 
   const { data: tags, isLoading, error } = useQuery<Tag[], Error>({
-    queryKey: ["tags", user?.id],
+    queryKey: ["tags", user?.id, userRole], // Adicionado userRole ao queryKey
     queryFn: fetchTags,
     enabled: !!user,
   });
@@ -65,7 +74,7 @@ const TagManagement = () => {
         .from("tags")
         .delete()
         .eq("id", id)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id); // RLS já deve cuidar disso, mas manter para consistência
       if (error) throw error;
     },
     onSuccess: () => {

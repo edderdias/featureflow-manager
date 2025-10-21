@@ -9,37 +9,43 @@ const navItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
+    roles: ["user", "technician", "admin"],
   },
   {
     title: "Lista de Demandas",
     href: "/demands",
     icon: ListTodo,
+    roles: ["user", "technician", "admin"],
   },
   {
     title: "Board Kanban",
     href: "/kanban",
     icon: LayoutGrid,
+    roles: ["user", "technician", "admin"],
   },
   {
     title: "Relatórios",
     href: "/reports",
     icon: BarChart3,
+    roles: ["technician", "admin"], // Apenas técnicos e administradores
   },
   {
     title: "Gerenciar Tags",
     href: "/tags",
     icon: Tags,
+    roles: ["technician", "admin"], // Apenas técnicos e administradores
   },
   {
     title: "Gerenciar Usuários",
     href: "/users",
     icon: Users,
+    roles: ["admin"], // Apenas administradores
   },
 ];
 
 export const Navigation = () => {
   const location = useLocation();
-  const { session, isLoading } = useAuth();
+  const { session, isLoading, userRole } = useAuth();
 
   if (isLoading || !session) {
     return null;
@@ -56,22 +62,26 @@ export const Navigation = () => {
           
           <div className="flex items-center gap-1">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.title}
-                </Link>
-              );
+              // Renderiza o item apenas se o papel do usuário estiver incluído nos papéis permitidos
+              if (userRole && item.roles.includes(userRole)) {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.title}
+                  </Link>
+                );
+              }
+              return null;
             })}
             <UserNav />
           </div>

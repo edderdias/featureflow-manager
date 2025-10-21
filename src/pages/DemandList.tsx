@@ -23,7 +23,7 @@ import { DateRange } from "react-day-picker"; // Novo import
 const DemandList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth(); // Obter userRole
 
   const [currentView, setCurrentView] = useState<"grid" | "table" | "calendar" | "gantt">("grid");
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,7 +46,16 @@ const DemandList = () => {
   const fetchDemands = async () => {
     if (!user) return [];
 
-    const { data, error } = await supabase.from("demands").select("*");
+    let query = supabase.from("demands").select("*");
+
+    // Se o papel for 'user', filtra apenas as demandas criadas por ele
+    if (userRole === "user") {
+      query = query.eq("user_id", user.id);
+    }
+    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
+    // pois as políticas RLS já permitem que vejam todas as demandas.
+
+    const { data, error } = await query;
     
     if (error) throw error;
     return data.map((d: any) => ({
@@ -62,7 +71,7 @@ const DemandList = () => {
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id],
+    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
     queryFn: fetchDemands,
     enabled: !!user,
   });

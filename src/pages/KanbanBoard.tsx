@@ -211,7 +211,7 @@ const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
 const columns: DemandStatus[] = ["todo", "in-progress", "testing", "done"];
 
 const KanbanBoard = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth(); // Obter userRole
   const queryClient = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false); // Estado para o diálogo de edição
@@ -219,9 +219,17 @@ const KanbanBoard = () => {
 
   const fetchDemands = async () => {
     if (!user) return [];
-    const { data, error } = await supabase
-      .from("demands")
-      .select("*");
+
+    let query = supabase.from("demands").select("*");
+
+    // Se o papel for 'user', filtra apenas as demandas criadas por ele
+    if (userRole === "user") {
+      query = query.eq("user_id", user.id);
+    }
+    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
+    // pois as políticas RLS já permitem que vejam todas as demandas.
+
+    const { data, error } = await query;
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
@@ -231,11 +239,12 @@ const KanbanBoard = () => {
       storyPoints: d.story_points,
       completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
       creatorName: d.creator_name,
+      creatorEmail: d.creator_email,
     })) as Demand[];
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id],
+    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
     queryFn: fetchDemands,
     enabled: !!user,
   });
@@ -268,6 +277,7 @@ const KanbanBoard = () => {
         client_email: updatedDemandData.client_email ?? null,
         client_name: updatedDemandData.client_name ?? null,
         creator_name: updatedDemandData.creatorName ?? null,
+        creator_email: updatedDemandData.creatorEmail ?? null, // Incluir creatorEmail na atualização
         updated_at: new Date().toISOString(), // Always update updatedAt
       };
 
@@ -356,7 +366,7 @@ const KanbanBoard = () => {
       console.log("Original Demand Status:", draggedDemand.status);
 
       // Optimistic update
-      queryClient.setQueryData(["demands", user?.id], (oldDemands: Demand[] | undefined) => {
+      queryClient.setQueryData(["demands", user?.id, userRole], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
         return oldDemands.map(d =>
           d.id === draggedDemandId ? { ...d, status: newStatus } : d
