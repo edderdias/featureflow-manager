@@ -38,6 +38,7 @@ export interface Demand {
   createdAt: Date;
   updatedAt: Date;
   dueDate?: Date;
+  completedAt?: Date; // Novo campo para a data de conclusão
   storyPoints?: number;
   sprint?: string;
   checklist?: ChecklistItem[];

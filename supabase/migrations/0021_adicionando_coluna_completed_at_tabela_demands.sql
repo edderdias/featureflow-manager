@@ -1,0 +1,2 @@
+ALTER TABLE public.demands
+ADD COLUMN completed_at TIMESTAMP WITH TIME ZONE;

@@ -2,7 +2,7 @@ import { Demand } from "@/types/demand";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, User, Wrench } from "lucide-react";
+import { Calendar, User, Wrench, CheckCircle2 } from "lucide-react"; // Adicionado CheckCircle2
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
@@ -11,9 +11,15 @@ interface DemandCardProps {
   demand: Demand;
   onEdit?: (demand: Demand) => void;
   onDelete?: (id: string) => void;
+  onComplete?: (id: string) => void; // Novo prop para concluir demanda
 }
 
-export const DemandCard = ({ demand, onEdit, onDelete }: DemandCardProps) => {
+export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardProps) => {
+  const displayDate = demand.status === "done" && demand.completedAt
+    ? demand.completedAt
+    : demand.createdAt;
+  const dateLabel = demand.status === "done" ? "Concluído em" : "Criado em";
+
   return (
     <Card className="hover:shadow-md transition-all duration-300">
       <CardHeader className="pb-3">
@@ -47,20 +53,25 @@ export const DemandCard = ({ demand, onEdit, onDelete }: DemandCardProps) => {
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{format(demand.createdAt, "dd/MM/yyyy", { locale: ptBR })}</span>
+            <span>{dateLabel}: {format(displayDate, "dd/MM/yyyy", { locale: ptBR })}</span>
           </div>
         </div>
       </CardContent>
       
-      <CardFooter className="gap-2 pt-3">
+      <CardFooter className="flex flex-wrap gap-2 pt-3">
         {onEdit && (
-          <Button variant="outline" size="sm" onClick={() => onEdit(demand)} className="flex-1">
+          <Button variant="outline" size="sm" onClick={() => onEdit(demand)} className="flex-1 min-w-[100px]">
             Editar
           </Button>
         )}
         {onDelete && (
-          <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1">
+          <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1 min-w-[100px]">
             Excluir
+          </Button>
+        )}
+        {onComplete && demand.status !== "done" && (
+          <Button variant="success" size="sm" onClick={() => onComplete(demand.id)} className="flex-1 min-w-[100px]">
+            <CheckCircle2 className="h-4 w-4 mr-2" /> Concluir
           </Button>
         )}
       </CardFooter>

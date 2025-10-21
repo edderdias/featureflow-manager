@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels, getStatusColor } from "@/lib/demandUtils";
 
 const DemandList = () => {
-  const navigate = useNavigate(); // Mantido para possível uso futuro ou redirecionamentos específicos
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -49,6 +49,7 @@ const DemandList = () => {
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
+      completedAt: d.completed_at ? new Date(d.completed_at) : undefined, // Mapear completed_at
       storyPoints: d.story_points,
     })) as Demand[];
   };
@@ -63,7 +64,7 @@ const DemandList = () => {
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = newDemandData;
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, ...rest } = newDemandData; // Incluir completedAt
 
       const { data, error } = await supabase
         .from("demands")
@@ -73,6 +74,7 @@ const DemandList = () => {
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
+          completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
         })
         .select()
@@ -94,7 +96,7 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, storyPoints, ...rest } = updatedDemandData;
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, ...rest } = updatedDemandData; // Incluir completedAt
 
       const { data, error } = await supabase
         .from("demands")
@@ -102,6 +104,7 @@ const DemandList = () => {
           ...rest,
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
+          completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
         })
         .eq("id", updatedDemandData.id)
@@ -139,6 +142,27 @@ const DemandList = () => {
     },
   });
 
+  const completeDemandMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      const { data, error } = await supabase
+        .from("demands")
+        .update({ status: "done", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+      toast.success("Demanda concluída com sucesso!");
+    },
+    onError: (err) => {
+      toast.error(`Erro ao concluir demanda: ${err.message}`);
+    },
+  });
+
   const handleSaveDemand = (demandData: Partial<Demand>) => {
     if (demandData.id) {
       updateDemandMutation.mutate(demandData);
@@ -155,6 +179,12 @@ const DemandList = () => {
   const handleDeleteDemand = (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta demanda?")) {
       deleteDemandMutation.mutate(id);
+    }
+  };
+
+  const handleCompleteDemand = (id: string) => {
+    if (window.confirm("Tem certeza que deseja concluir esta demanda?")) {
+      completeDemandMutation.mutate(id);
     }
   };
 
@@ -364,7 +394,13 @@ const DemandList = () => {
         {currentView === "grid" && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredDemands.map((demand) => (
-              <DemandCard key={demand.id} demand={demand} onEdit={handleEditDemand} onDelete={handleDeleteDemand} />
+              <DemandCard 
+                key={demand.id} 
+                demand={demand} 
+                onEdit={handleEditDemand} 
+                onDelete={handleDeleteDemand} 
+                onComplete={handleCompleteDemand} // Passar a função de concluir
+              />
             ))}
           </div>
         )}
