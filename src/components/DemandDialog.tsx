@@ -35,6 +35,26 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  // Query para buscar o perfil do usuário logado
+  const { data: profileData } = useQuery({
+    queryKey: ["profiles", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("id", user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const currentUserName = profileData?.first_name || profileData?.last_name
+    ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim()
+    : user?.email || "Usuário Desconhecido";
+
   const [formData, setFormData] = useState<Partial<Demand>>(
     demand || {
       title: "",
@@ -50,6 +70,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       storyPoints: 0,
       createdAt: new Date(),
       dueDate: new Date(),
+      creatorName: currentUserName, // Definir para novas demandas
     }
   );
 
@@ -75,9 +96,10 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         storyPoints: 0,
         createdAt: new Date(),
         dueDate: new Date(),
+        creatorName: currentUserName, // Garantir que seja definido para novas demandas
       });
     }
-  }, [demand, open]);
+  }, [demand, open, currentUserName]); // Adicionar currentUserName às dependências
 
   // Query para buscar tags existentes do Supabase
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
@@ -220,6 +242,16 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="creatorName">Criado por</Label>
+              <Input
+                id="creatorName"
+                value={formData.creatorName || ""}
+                readOnly
+                className="bg-muted/50"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
               <Input

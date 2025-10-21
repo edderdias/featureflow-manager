@@ -48,4 +48,5 @@ export interface Demand {
   client_cnpj?: string; // New field
   client_email?: string; // New field
   client_name?: string; // New field
+  creatorName?: string; // Novo campo para o nome do criador da demanda
 }

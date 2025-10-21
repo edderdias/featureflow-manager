@@ -51,6 +51,7 @@ const DemandList = () => {
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
       completedAt: d.completed_at ? new Date(d.completed_at) : undefined, // Mapear completed_at
       storyPoints: d.story_points,
+      creatorName: d.creator_name, // Mapear o novo campo creatorName
     })) as Demand[];
   };
 
@@ -64,7 +65,7 @@ const DemandList = () => {
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, ...rest } = newDemandData; // Incluir completedAt
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = newDemandData; // Incluir creatorName
 
       const { data, error } = await supabase
         .from("demands")
@@ -76,6 +77,7 @@ const DemandList = () => {
           due_date: dueDate ? dueDate.toISOString() : null,
           completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
           story_points: storyPoints,
+          creator_name: creatorName, // Salvar creatorName
         })
         .select()
         .single();
@@ -96,7 +98,8 @@ const DemandList = () => {
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, ...rest } = updatedDemandData; // Incluir completedAt
+      // Excluir creatorName da atualização, pois deve ser imutável após a criação
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, ...rest } = updatedDemandData;
 
       const { data, error } = await supabase
         .from("demands")
@@ -273,7 +276,7 @@ const DemandList = () => {
   if (error) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <p className="text-destructive">Erro ao carregar demandas: {error.message}</p>
+        <p className="text-destructive">Erro ao carregar demandas: ${error.message}</p>
       </div>
     );
   }
