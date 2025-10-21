@@ -186,6 +186,8 @@ const ClientDemand = () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       attachments: uploadedAttachment ? [...(formData.attachments || []), uploadedAttachment] : formData.attachments,
+      creatorName: formData.client_name, // Popula creatorName com client_name
+      creatorEmail: formData.client_email, // Popula creatorEmail com client_email
     };
 
     const { data, error } = await supabase
@@ -206,6 +208,8 @@ const ClientDemand = () => {
           client_email: demandToSave.client_email,
           client_name: demandToSave.client_name,
           attachments: demandToSave.attachments,
+          creator_name: demandToSave.creatorName, // Incluir creatorName no insert
+          creator_email: demandToSave.creatorEmail, // Incluir creatorEmail no insert
         },
       ])
       .select()
