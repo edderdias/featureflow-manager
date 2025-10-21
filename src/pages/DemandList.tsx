@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns"; // Adicionado startOfWeek e endOfWeek
 import { ptBR } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -233,7 +233,11 @@ const DemandList = () => {
   // --- Calendar View Logic ---
   const monthStart = startOfMonth(calendarCurrentDate);
   const monthEnd = endOfMonth(calendarCurrentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Ajuste para incluir dias do mês anterior e seguinte para preencher a grade da semana
+  const startDayOfCalendar = startOfWeek(monthStart);
+  const endDayOfCalendar = endOfWeek(monthEnd);
+  const daysInCalendar = eachDayOfInterval({ start: startDayOfCalendar, end: endDayOfCalendar });
 
   const getDemandsByDate = (date: Date) => {
     return filteredDemands.filter((demand) => demand.createdAt && isSameDay(demand.createdAt, date));
@@ -509,7 +513,7 @@ const DemandList = () => {
                 </div>
               ))}
 
-              {daysInMonth.map((day) => {
+              {daysInCalendar.map((day) => { {/* Alterado para daysInCalendar */}
                 const dayDemands = getDemandsByDate(day);
                 const isCurrentMonth = isSameMonth(day, calendarCurrentDate);
 
