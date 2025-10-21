@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner"; // Import toast for notifications
 import { DemandDialog } from "@/components/DemandDialog"; // Importar DemandDialog
+import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
 
 // DND imports
 import {
@@ -25,6 +26,7 @@ import {
   DragOverlay,
   UniqueIdentifier,
   useDroppable,
+  useDndContext, // Importar useDndContext
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -170,9 +172,17 @@ interface KanbanColumnProps {
 
 const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
   const { setNodeRef } = useDroppable({ id });
+  const { active } = useDndContext(); // Hook para verificar se há um item sendo arrastado
+  const isDraggingOver = active && active.id !== id; // Verifica se um item está sendo arrastado e não é a própria coluna
 
   return (
-    <div ref={setNodeRef} className="flex flex-col bg-muted/30 p-4 rounded-lg shadow-sm min-h-[200px]">
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex flex-col bg-muted/30 p-4 rounded-lg shadow-sm min-h-[200px]",
+        isDraggingOver && "border-2 border-dashed border-primary-foreground/50 bg-primary/10" // Estilo visual quando arrastando sobre a coluna
+      )}
+    >
       <div className="mb-4">
         <h2 className="text-lg font-semibold mb-1">{title}</h2>
         <p className="text-sm text-muted-foreground">

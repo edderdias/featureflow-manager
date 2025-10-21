@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; /
 import { supabase } from "@/integrations/supabase/client"; // Importar cliente Supabase
 import { useAuth } from "@/integrations/supabase/auth"; // Importar hook de autenticação
 import { toast } from "sonner"; // Importar toast para notificações
+import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
 
 interface DemandDialogProps {
   demand?: Demand;
@@ -61,7 +62,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       description: "",
       type: undefined,
       priority: "medium",
-      status: "todo",
+      status: "todo", // Default status
       system: undefined,
       responsible: "",
       checklist: [],
@@ -70,13 +71,14 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       storyPoints: 0,
       createdAt: new Date(),
       dueDate: new Date(),
-      creatorName: currentUserName, // Definir para novas demandas
+      creatorName: currentUserName,
     }
   );
 
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [newLink, setNewLink] = useState({ name: "", url: "" });
   const [newTag, setNewTag] = useState("");
+  const [statusError, setStatusError] = useState<string | null>(null); // Novo estado para erro de status
 
   useEffect(() => {
     if (demand) {
@@ -96,10 +98,11 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         storyPoints: 0,
         createdAt: new Date(),
         dueDate: new Date(),
-        creatorName: currentUserName, // Garantir que seja definido para novas demandas
+        creatorName: currentUserName,
       });
     }
-  }, [demand, open, currentUserName]); // Adicionar currentUserName às dependências
+    setStatusError(null); // Limpa o erro de status ao abrir/fechar o diálogo
+  }, [demand, open, currentUserName]);
 
   // Query para buscar tags existentes do Supabase
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
@@ -138,6 +141,12 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   });
 
   const handleSave = () => {
+    if (!formData.status) {
+      setStatusError("O status da demanda é obrigatório.");
+      toast.error("Por favor, selecione um status para a demanda.");
+      return;
+    }
+    setStatusError(null); // Limpa o erro se a validação passar
     onSave(formData);
     onOpenChange(false);
   };
@@ -249,7 +258,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                 value={formData.creatorName || ""}
                 onChange={(e) => setFormData({ ...formData, creatorName: e.target.value })}
                 placeholder="Nome do criador"
-                // Removido readOnly e bg-muted/50 para permitir edição
               />
             </div>
 
@@ -315,9 +323,12 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                 <Label htmlFor="status">Status *</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value) => setFormData({ ...formData, status: value as DemandStatus })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, status: value as DemandStatus });
+                    setStatusError(null); // Limpa o erro ao selecionar um status
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={cn(statusError && "border-destructive focus-visible:ring-destructive")}>
                     <SelectValue placeholder="Selecione o status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -327,6 +338,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                     <SelectItem value="done">Concluído</SelectItem>
                   </SelectContent>
                 </Select>
+                {statusError && <p className="text-sm text-destructive mt-1">{statusError}</p>}
               </div>
 
               <div className="space-y-2">
