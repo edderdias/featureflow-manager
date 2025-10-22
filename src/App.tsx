@@ -59,7 +59,8 @@ const AppRoutes = () => {
   return (
     <>
       {session && (
-        <Navigation /> {/* Usando a importação direta */}
+        // Usando a importação direta
+        <Navigation /> 
       )}
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
