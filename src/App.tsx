@@ -17,6 +17,7 @@ const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
 import Login from "./pages/Login"; // Importação direta para Login
 const ClientDemand = React.lazy(() => import("./pages/ClientDemand"));
+const ConfirmInvite = React.lazy(() => import("./pages/ConfirmInvite")); // Lazy load ConfirmInvite
 
 // Lazy load GlobalProviders
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
@@ -66,6 +67,7 @@ const AppRoutes = () => {
         <Routes>
           <Route path="/login" element={<Login />} /> {/* Usando o componente Login importado diretamente */}
           <Route path="/client-demand" element={<ClientDemand />} />
+          <Route path="/confirm-invite" element={<ConfirmInvite />} /> {/* Nova rota para confirmar convite */}
           <Route
             path="/"
             element={
