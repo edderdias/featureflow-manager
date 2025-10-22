@@ -21,8 +21,8 @@ const ClientDemand = React.lazy(() => import("./pages/ClientDemand"));
 // Lazy load GlobalProviders
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
 
-// Lazy load Navigation
-const LazyNavigation = React.lazy(() => import("./components/Navigation").then(module => ({ default: module.Navigation })));
+// Importação DIRETA da Navigation para depuração
+import { Navigation } from "./components/Navigation"; 
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading } = useAuth();
@@ -59,9 +59,7 @@ const AppRoutes = () => {
   return (
     <>
       {session && (
-        <Suspense fallback={null}>
-          <LazyNavigation />
-        </Suspense>
+        <Navigation /> {/* Usando a importação direta */}
       )}
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
