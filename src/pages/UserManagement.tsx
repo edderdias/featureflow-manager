@@ -21,6 +21,8 @@ export interface UserProfile {
   avatar_url: string | null;
   role: string;
   created_at: string;
+  email_confirmed_at: string | null; // Adicionado
+  last_sign_in_at: string | null;    // Adicionado
 }
 
 const UserManagement = () => {
@@ -57,11 +59,10 @@ const UserManagement = () => {
 
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "POST",
-        // Passando o objeto diretamente, o Supabase client fará o JSON.stringify e definirá o Content-Type
         body: { email, first_name, last_name }, 
       });
 
-      if (error) throw error; // This error is a Supabase client error, not the Edge Function's response body error
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
@@ -71,7 +72,7 @@ const UserManagement = () => {
       setNewLastName("");
       setNewEmail("");
     },
-    onError: (err: any) => { // Usar 'any' temporariamente para acessar 'details'
+    onError: (err: any) => {
       let displayMessage = `Erro ao enviar convite: ${err.message}`;
       if (err.details) {
         try {
@@ -80,7 +81,6 @@ const UserManagement = () => {
             displayMessage = `Erro ao enviar convite: ${errorDetails.error}`;
           }
         } catch (parseError) {
-          // Se 'details' não for JSON, usa o texto bruto
           displayMessage = `Erro ao enviar convite: ${err.details}`;
         }
       }
@@ -88,14 +88,46 @@ const UserManagement = () => {
     },
   });
 
+  const resendInviteMutation = useMutation({
+    mutationFn: async (email: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data, error } = await supabase.functions.invoke("admin-actions", {
+        method: "POST",
+        body: { email, action: "resend" }, // Passa a ação "resend"
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Link de convite reenviado com sucesso!");
+    },
+    onError: (err: any) => {
+      let displayMessage = `Erro ao reenviar convite: ${err.message}`;
+      if (err.details) {
+        try {
+          const errorDetails = JSON.parse(err.details);
+          if (errorDetails.error) {
+            displayMessage = `Erro ao reenviar convite: ${errorDetails.error}`;
+          }
+        } catch (parseError) {
+          displayMessage = `Erro ao reenviar convite: ${err.details}`;
+        }
+      }
+      toast.error(displayMessage);
+    },
+  });
+
   const updateUserProfileMutation = useMutation({
-    mutationFn: async (updatedUser: Partial<UserProfile> & { password?: string }) => { // Adicionado 'password' ao tipo
+    mutationFn: async (updatedUser: Partial<UserProfile> & { password?: string }) => {
       if (!user) throw new Error("Usuário não autenticado");
       const { id, first_name, last_name, avatar_url, role, password } = updatedUser;
 
       const { data, error } = await supabase.functions.invoke("admin-actions", {
-        method: "PATCH", // Usando o novo método PATCH
-        body: { userId: id, first_name, last_name, avatar_url, role, password }, // Passar como objeto
+        method: "PATCH",
+        body: { userId: id, first_name, last_name, avatar_url, role, password },
       });
 
       if (error) throw error;
@@ -117,7 +149,7 @@ const UserManagement = () => {
       if (!user) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase.functions.invoke("admin-actions", {
         method: "DELETE",
-        body: { userId }, // Passar como objeto
+        body: { userId },
       });
 
       if (error) throw error;
@@ -141,6 +173,14 @@ const UserManagement = () => {
       });
     } else {
       toast.error("O e-mail é obrigatório para o convite.");
+    }
+  };
+
+  const handleResendInvite = (email: string) => {
+    if (email) {
+      resendInviteMutation.mutate(email);
+    } else {
+      toast.error("E-mail do usuário não disponível para reenviar convite.");
     }
   };
 
@@ -250,6 +290,22 @@ const UserManagement = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        {/* Botão de Reenviar Convite */}
+                        {profile.email_confirmed_at === null && profile.last_sign_in_at === null && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleResendInvite(profile.email || '')}
+                            disabled={resendInviteMutation.isPending}
+                            title="Reenviar link de convite"
+                          >
+                            {resendInviteMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Mail className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button

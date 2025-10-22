@@ -120,6 +120,8 @@ serve(async (req) => {
           avatar_url: userProfile?.avatar_url || null,
           role: userProfile?.role || "user", // Default to 'user' if role not found
           created_at: user.created_at,
+          email_confirmed_at: user.email_confirmed_at, // Adicionado
+          last_sign_in_at: user.last_sign_in_at,       // Adicionado
         };
       });
 
@@ -213,8 +215,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
-    } else if (req.method === "POST") { // Novo método POST para convidar usuários
-      console.log("Edge Function: Handling POST request for user invitation.");
+    } else if (req.method === "POST") { // Novo método POST para convidar usuários ou reenviar convite
+      console.log("Edge Function: Handling POST request for user invitation or resend.");
       console.log("Content-Type:", req.headers.get("Content-Type"));
       
       let requestBody;
@@ -229,7 +231,7 @@ serve(async (req) => {
         });
       }
 
-      const { email, first_name, last_name } = requestBody;
+      const { email, first_name, last_name, action } = requestBody; // Adicionado 'action'
 
       if (!email) {
         return new Response(JSON.stringify({ error: "Email is required for invitation" }), {
@@ -238,14 +240,19 @@ serve(async (req) => {
         });
       }
 
+      // Se a ação for 'resend', passamos apenas o email.
+      // Caso contrário, é um novo convite, e usamos first_name, last_name.
+      const inviteOptions: { data?: { first_name?: string | null; last_name?: string | null } } = {};
+      if (action !== 'resend') {
+        inviteOptions.data = {
+          first_name: first_name || null,
+          last_name: last_name || null,
+        };
+      }
+
       const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(
         email,
-        {
-          data: {
-            first_name: first_name || null,
-            last_name: last_name || null,
-          },
-        }
+        inviteOptions
       );
 
       if (inviteError) {
@@ -253,9 +260,9 @@ serve(async (req) => {
         let statusCode = 500;
         let errorMessage = `Erro ao enviar convite: ${inviteError.message}`;
 
-        // Check for specific error message indicating user already exists
+        // Verifica por mensagem de erro específica indicando que o usuário já está registrado
         if (inviteError.message.includes("User already registered")) {
-          statusCode = 409; // Conflict
+          statusCode = 409; // Conflito
           errorMessage = "Erro: Já existe um usuário registrado com este e-mail.";
         }
 
@@ -265,7 +272,7 @@ serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ message: "Invitation sent successfully", user: invitedUser.user }), {
+      return new Response(JSON.stringify({ message: action === 'resend' ? "Invitation resent successfully" : "Invitation sent successfully", user: invitedUser.user }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
