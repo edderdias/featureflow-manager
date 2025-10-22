@@ -83,7 +83,7 @@ const Login = () => {
             },
           }}
           theme="light"
-          redirectTo={window.location.origin + '/login'} {/* ALTERADO AQUI */}
+          redirectTo={window.location.origin + '/login'}
           localization={portugueseLocalization} // Adicionado para traduzir os rótulos
         />
         <div className="text-center mt-4">
