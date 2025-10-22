@@ -72,7 +72,13 @@ export const SessionContextProvider = ({ children }: { children: React.ReactNode
       if (_event === 'SIGNED_OUT') {
         navigate('/login');
       } else if (_event === 'SIGNED_IN' && window.location.pathname === '/login') {
-        navigate('/');
+        // Verifica se o URL contém o parâmetro 'type=invite' na hash
+        const urlParams = new URLSearchParams(window.location.hash.substring(1)); // Remove '#'
+        const isInviteFlow = urlParams.get('type') === 'invite';
+
+        if (!isInviteFlow) { // Apenas redireciona se NÃO for um fluxo de convite
+          navigate('/');
+        }
       }
     });
 
