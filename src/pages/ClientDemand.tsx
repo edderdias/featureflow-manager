@@ -214,7 +214,7 @@ const ClientDemand = () => {
       ])
       .select()
       .single();
-
+    console.log('Devanda ---> ' + JSON.stringify(demandToSave));
     if (error) {
       console.error("Error submitting demand:", error);
       toast.error(`Erro ao enviar demanda: ${error.message}`);
