@@ -273,68 +273,76 @@ const UserManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((profile) => (
-                    <TableRow key={profile.id}>
-                      <TableCell className="font-medium">
-                        {profile.first_name || profile.last_name ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : "Usuário sem nome"}
-                      </TableCell>
-                      <TableCell>{profile.email || "N/A"}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{profile.role}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditUser(profile)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {/* Botão de Reenviar Convite */}
-                        {profile.email_confirmed_at === null && profile.last_sign_in_at === null && (
+                  {users.map((profile) => {
+                    // DEBUG: Log para inspecionar os valores
+                    console.log(`User: ${profile.email}, email_confirmed_at: ${profile.email_confirmed_at}, last_sign_in_at: ${profile.last_sign_in_at}`);
+
+                    // Condição ajustada para verificar se os campos são falsy (null, undefined, "")
+                    const isInvitePending = !profile.email_confirmed_at && !profile.last_sign_in_at;
+
+                    return (
+                      <TableRow key={profile.id}>
+                        <TableCell className="font-medium">
+                          {profile.first_name || profile.last_name ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : "Usuário sem nome"}
+                        </TableCell>
+                        <TableCell>{profile.email || "N/A"}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{profile.role}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right flex gap-2 justify-end">
                           <Button
-                            variant="secondary"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleResendInvite(profile.email || '')}
-                            disabled={resendInviteMutation.isPending}
-                            title="Reenviar link de convite"
+                            onClick={() => handleEditUser(profile)}
                           >
-                            {resendInviteMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Mail className="h-4 w-4" />
-                            )}
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        )}
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                          {/* Botão de Reenviar Convite */}
+                          {isInvitePending && (
                             <Button
-                              variant="destructive"
+                              variant="secondary"
                               size="sm"
-                              disabled={profile.role !== 'admin'}
+                              onClick={() => handleResendInvite(profile.email || '')}
+                              disabled={resendInviteMutation.isPending}
+                              title="Reenviar link de convite"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {resendInviteMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="h-4 w-4" />
+                              )}
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso excluirá permanentemente o usuário
-                                e removerá seus dados de nossos servidores.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteUser(profile.id)}>
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={profile.role !== 'admin'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta ação não pode ser desfeita. Isso excluirá permanentemente o usuário
+                                  e removerá seus dados de nossos servidores.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(profile.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             ) : (
