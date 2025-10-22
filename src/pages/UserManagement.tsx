@@ -27,7 +27,7 @@ export interface UserProfile {
 
 const UserManagement = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth(); // Obter userRole
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -297,8 +297,8 @@ const UserManagement = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {/* Botão de Reenviar Convite */}
-                          {isInvitePending && (
+                          {/* Botão de Reenviar Convite - AGORA SÓ PARA ADMINS */}
+                          {isInvitePending && userRole === "admin" && (
                             <Button
                               variant="secondary"
                               size="sm"
