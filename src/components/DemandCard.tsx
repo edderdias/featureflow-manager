@@ -1,21 +1,22 @@
 import { Demand } from "@/types/demand";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, User, Wrench, CheckCircle2, Clock } from "lucide-react"; // Adicionado Clock icon
-import { format, differenceInDays } from "date-fns"; // Adicionado differenceInDays
+import { Button } from "@/components/ui/button"; // Adicionado: Importação do componente Button
+import { Calendar, User, Wrench, CheckCircle2, Clock } from "lucide-react";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
-import { useAuth } from "@/integrations/supabase/auth"; // Importar useAuth
+import { useAuth } from "@/integrations/supabase/auth";
 
 interface DemandCardProps {
   demand: Demand;
   onEdit?: (demand: Demand) => void;
   onDelete?: (id: string) => void;
-  onComplete?: (id: string) => void; // Novo prop para concluir demanda
+  onComplete?: (id: string) => void;
 }
 
 export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardProps) => {
-  const { userRole } = useAuth(); // Obter o papel do usuário
+  const { userRole } = useAuth();
   const displayDate = demand.status === "done" && demand.completedAt
     ? demand.completedAt
     : demand.createdAt;
@@ -81,7 +82,7 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
             Editar
           </Button>
         )}
-        {onDelete && userRole === "admin" && ( // Apenas admins podem excluir
+        {onDelete && userRole === "admin" && (
           <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1 min-w-[100px]">
             Excluir
           </Button>
