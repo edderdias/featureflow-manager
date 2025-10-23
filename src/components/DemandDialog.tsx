@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns"; // Importar format para formatar datas
 
 interface DemandDialogProps {
   demand?: Demand;
@@ -69,8 +70,8 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       attachments: [],
       tags: [],
       storyPoints: 0,
-      createdAt: new Date(),
-      dueDate: new Date(),
+      createdAt: new Date(), // Default for new demands
+      dueDate: undefined, // Default to undefined for new demands
       creatorName: currentUserName,
       creatorEmail: user?.email, // Inicializa creatorEmail com o e-mail do usuário logado para novas demandas
     }
@@ -98,7 +99,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         tags: [],
         storyPoints: 0,
         createdAt: new Date(),
-        dueDate: new Date(),
+        dueDate: undefined, // Garante que seja undefined para novas demandas
         creatorName: currentUserName,
         creatorEmail: user?.email, // Garante que o email do criador seja preenchido para novas demandas
       });
@@ -422,16 +423,27 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dueDate">Data de Abertura</Label>
+                <Label htmlFor="createdAt">Data de Criação</Label>
                 <Input
-                  id="dueDate"
+                  id="createdAt"
                   type="date"
-                  value={formData.dueDate ? formData.dueDate.toISOString().split("T")[0] : ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, dueDate: e.target.value ? new Date(e.target.value) : undefined })
-                  }
+                  value={formData.createdAt ? format(formData.createdAt, "yyyy-MM-dd") : ""}
+                  readOnly
+                  className="bg-muted/50 cursor-not-allowed"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Data de Vencimento</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, dueDate: e.target.value ? new Date(e.target.value) : undefined })
+                }
+              />
             </div>
 
             <div className="space-y-2">
