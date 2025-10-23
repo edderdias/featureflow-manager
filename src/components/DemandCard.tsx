@@ -1,9 +1,8 @@
 import { Demand } from "@/types/demand";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, User, Wrench, CheckCircle2 } from "lucide-react"; // Adicionado CheckCircle2
-import { format } from "date-fns";
+import { Calendar, User, Wrench, CheckCircle2, Clock } from "lucide-react"; // Adicionado Clock icon
+import { format, differenceInDays } from "date-fns"; // Adicionado differenceInDays
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
 import { useAuth } from "@/integrations/supabase/auth"; // Importar useAuth
@@ -22,14 +21,24 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
     : demand.createdAt;
   const dateLabel = demand.status === "done" ? "Concluído em" : "Criado em";
 
+  const isDueSoon = demand.dueDate && demand.status !== "done" && differenceInDays(demand.dueDate, new Date()) === 1;
+
   return (
     <Card className="hover:shadow-md transition-all duration-300">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg leading-tight">{demand.title}</CardTitle>
-          <Badge variant={getPriorityColor(demand.priority) as any}>
-            {priorityLabels[demand.priority]}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={getPriorityColor(demand.priority) as any}>
+              {priorityLabels[demand.priority]}
+            </Badge>
+            {isDueSoon && (
+              <Badge variant="warning" className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Vence amanhã!
+              </Badge>
+            )}
+          </div>
         </div>
         <div className="flex gap-2 pt-2">
           <Badge variant={getTypeColor(demand.type) as any}>
@@ -57,6 +66,12 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
             <Calendar className="h-4 w-4" />
             <span>{dateLabel}: {format(displayDate, "dd/MM/yyyy", { locale: ptBR })}</span>
           </div>
+          {demand.dueDate && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>Vencimento: {format(demand.dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>
+            </div>
+          )}
         </div>
       </CardContent>
       
