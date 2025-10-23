@@ -1,8 +1,8 @@
 import { Demand } from "@/types/demand";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; // Adicionado: Importação do componente Button
-import { Calendar, User, Wrench, CheckCircle2, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, User, Wrench, CheckCircle2, Clock, AlertTriangle } from "lucide-react"; // Adicionado AlertTriangle icon
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
@@ -22,7 +22,9 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
     : demand.createdAt;
   const dateLabel = demand.status === "done" ? "Concluído em" : "Criado em";
 
-  const isDueSoon = demand.dueDate && demand.status !== "done" && differenceInDays(demand.dueDate, new Date()) === 1;
+  const daysUntilDue = demand.dueDate && demand.status !== "done" ? differenceInDays(demand.dueDate, new Date()) : null;
+  const isDueSoon = daysUntilDue === 1;
+  const isOverdue = daysUntilDue !== null && daysUntilDue <= 0 && demand.status !== "done";
 
   return (
     <Card className="hover:shadow-md transition-all duration-300">
@@ -33,6 +35,12 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
             <Badge variant={getPriorityColor(demand.priority) as any}>
               {priorityLabels[demand.priority]}
             </Badge>
+            {isOverdue && (
+              <Badge variant="destructive" className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Prazo Vencido!
+              </Badge>
+            )}
             {isDueSoon && (
               <Badge variant="warning" className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
