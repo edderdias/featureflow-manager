@@ -62,20 +62,13 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
   const totalItems = demand.checklist?.length || 0;
   const checklistProgress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Previne que o clique seja tratado como início de arrasto se o drag não estiver ativo
-    if (!isDragging) {
-      onEdit(demand);
-    }
-  };
-
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners} // Listeners para arrastar
-      onClick={handleClick} // Handler para clique simples
+      onDoubleClick={() => onEdit(demand)} // Handler para duplo clique
       className="cursor-grab hover:shadow-lg transition-all duration-300 group mb-3"
     >
       {demand.tags && demand.tags.length > 0 && (
