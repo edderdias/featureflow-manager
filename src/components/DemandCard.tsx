@@ -2,7 +2,7 @@ import { Demand } from "@/types/demand";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, User, Wrench, CheckCircle2, Clock, AlertTriangle } from "lucide-react"; // Adicionado AlertTriangle icon
+import { Calendar, User, Wrench, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { typeLabels, priorityLabels, statusLabels, getPriorityColor, getTypeColor, getStatusColor } from "@/lib/demandUtils";
@@ -17,11 +17,7 @@ interface DemandCardProps {
 
 export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardProps) => {
   const { userRole } = useAuth();
-  const displayDate = demand.status === "done" && demand.completedAt
-    ? demand.completedAt
-    : demand.createdAt;
-  const dateLabel = demand.status === "done" ? "Concluído em" : "Criado em";
-
+  
   const daysUntilDue = demand.dueDate && demand.status !== "done" ? differenceInDays(demand.dueDate, new Date()) : null;
   const isDueSoon = daysUntilDue === 1;
   const isOverdue = daysUntilDue !== null && daysUntilDue <= 0 && demand.status !== "done";
@@ -71,14 +67,23 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
             <User className="h-4 w-4" />
             <span>{demand.responsible}</span>
           </div>
+          {/* Sempre exibe a data de criação */}
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{dateLabel}: {format(displayDate, "dd/MM/yyyy", { locale: ptBR })}</span>
+            <span>Criado em: {format(demand.createdAt, "dd/MM/yyyy", { locale: ptBR })}</span>
           </div>
+          {/* Exibe a data de vencimento se existir */}
           {demand.dueDate && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>Vencimento: {format(demand.dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>
+            </div>
+          )}
+          {/* Exibe a data de conclusão se a demanda estiver concluída */}
+          {demand.status === "done" && demand.completedAt && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Concluído em: {format(demand.completedAt, "dd/MM/yyyy", { locale: ptBR })}</span>
             </div>
           )}
         </div>
