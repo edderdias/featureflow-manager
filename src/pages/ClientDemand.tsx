@@ -214,7 +214,7 @@ const ClientDemand = () => {
           creator_email: demandToSave.creatorEmail,
         },
       ])
-      .select()
+      // .select()
       .single();
     console.log('Demanda a ser salva:', JSON.stringify(demandToSave)); // Log para depuração
     if (error) {
