@@ -74,7 +74,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       dueDate: undefined, // Default to undefined for new demands
       creatorName: currentUserName,
       creatorEmail: user?.email, // Inicializa creatorEmail com o e-mail do usuário logado para novas demandas
-      client_email: user?.email,
     }
   );
 
@@ -103,6 +102,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         dueDate: undefined, // Garante que seja undefined para novas demandas
         creatorName: currentUserName,
         creatorEmail: user?.email, // Garante que o email do criador seja preenchido para novas demandas
+        client_email: user?.email
       });
     }
     setStatusError(null); // Limpa o erro de status ao abrir/fechar o diálogo
