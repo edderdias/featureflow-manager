@@ -207,7 +207,7 @@ const ClientDemand = () => {
           created_at: demandToSave.createdAt?.toISOString(),
           updated_at: demandToSave.updatedAt?.toISOString(),
           client_cnpj: demandToSave.client_cnpj,
-          client_email: demandToSave.client_email ? demandToSave.client_email : demandToSave.creatorEmail,
+          client_email: demandToSave.client_email,
           client_name: demandToSave.client_name,
           attachments: demandToSave.attachments,
           creator_name: demandToSave.creatorName,
