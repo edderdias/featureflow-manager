@@ -94,6 +94,8 @@ const DemandList = () => {
           story_points: storyPoints,
           creator_name: creatorName, // Salvar creatorName
           creator_email: creatorEmail, // Salvar creatorEmail
+          client_email: creatorEmail,
+          client_name: creatorName,
         })
         .select()
         .single();
