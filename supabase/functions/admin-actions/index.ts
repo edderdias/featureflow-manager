@@ -256,7 +256,7 @@ serve(async (req) => {
       );
 
       if (inviteError) {
-        console.error("Edge Function Error: Error inviting user:", inviteError);
+        console.error("Edge Function Error: Error inviting user:", inviteError.message, inviteError); // Log full error object
         let statusCode = 500;
         let errorMessage = `Erro ao enviar convite: ${inviteError.message}`;
 
@@ -264,6 +264,9 @@ serve(async (req) => {
         if (inviteError.message.includes("User already registered")) {
           statusCode = 409; // Conflito
           errorMessage = "Erro: Já existe um usuário registrado com este e-mail.";
+        } else if (inviteError.message.includes("Invalid email")) { // Adicionado para e-mail inválido
+          statusCode = 400;
+          errorMessage = "Erro: O formato do e-mail é inválido.";
         }
 
         return new Response(JSON.stringify({ error: errorMessage }), {

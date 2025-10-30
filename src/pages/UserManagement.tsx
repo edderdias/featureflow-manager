@@ -73,16 +73,23 @@ const UserManagement = () => {
       setNewEmail("");
     },
     onError: (err: any) => {
-      let displayMessage = `Erro ao enviar convite: ${err.message}`;
+      let displayMessage = `Erro ao enviar convite: ${err.message}`; // Mensagem genérica padrão
       if (err.details) {
         try {
           const errorDetails = JSON.parse(err.details);
           if (errorDetails.error) {
             displayMessage = `Erro ao enviar convite: ${errorDetails.error}`;
+          } else {
+            // Se 'details' é JSON mas não tem campo 'error', usa o JSON completo
+            displayMessage = `Erro ao enviar convite: ${err.details}`;
           }
         } catch (parseError) {
+          // Se 'details' não é JSON válido, usa-o diretamente
           displayMessage = `Erro ao enviar convite: ${err.details}`;
         }
+      } else if (err.status) {
+        // Se não há 'details', mas há status, fornece uma mensagem mais específica
+        displayMessage = `Erro ao enviar convite (Status: ${err.status}). Por favor, tente novamente.`;
       }
       toast.error(displayMessage);
     },
