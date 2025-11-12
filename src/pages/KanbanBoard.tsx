@@ -13,6 +13,7 @@ import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner"; // Import toast for notifications
 import { DemandDialog } from "@/components/DemandDialog"; // Importar DemandDialog
 import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
+import { Button } from "@/components/ui/button"; // Importar Button para o botão "Ver Mais"
 
 // DND imports
 import {
@@ -159,11 +160,14 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
 interface KanbanColumnProps {
   id: DemandStatus;
   title: string;
-  demands: Demand[];
-  onEdit: (demand: Demand) => void; // Adicionado prop onEdit
+  demands: Demand[]; // Demands to display (could be sliced)
+  totalDemandsCount: number; // Total demands for this status (for header count)
+  onEdit: (demand: Demand) => void;
+  showLoadMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
+const KanbanColumn = ({ id, title, demands, totalDemandsCount, onEdit, showLoadMore, onLoadMore }: KanbanColumnProps) => {
   const { setNodeRef } = useDroppable({ id });
   const { active } = useDndContext(); // Hook para verificar se há um item sendo arrastado
   const isDraggingOver = active && active.id !== id; // Verifica se um item está sendo arrastado e não é a própria coluna
@@ -179,7 +183,7 @@ const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
       <div className="mb-4">
         <h2 className="text-lg font-semibold mb-1">{title}</h2>
         <p className="text-sm text-muted-foreground">
-          {demands.length} {demands.length === 1 ? "demanda" : "demandas"}
+          {totalDemandsCount} {totalDemandsCount === 1 ? "demanda" : "demandas"}
         </p>
       </div>
 
@@ -190,12 +194,17 @@ const KanbanColumn = ({ id, title, demands, onEdit }: KanbanColumnProps) => {
           ))}
         </SortableContext>
 
-        {demands.length === 0 && (
+        {demands.length === 0 && totalDemandsCount === 0 && (
           <div className="flex items-center justify-center h-32 border-2 border-dashed rounded-lg border-border text-muted-foreground text-sm">
             Nenhuma demanda
           </div>
         )}
       </div>
+      {showLoadMore && onLoadMore && (
+        <Button variant="outline" className="w-full mt-4" onClick={onLoadMore}>
+          Ver mais {Math.min(5, totalDemandsCount - demands.length)} demandas
+        </Button>
+      )}
     </div>
   );
 };
@@ -209,6 +218,7 @@ const KanbanBoard = () => {
   const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false); // Estado para o diálogo de edição
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined); // Estado para a demanda sendo editada
+  const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5); // Estado para controlar a paginação da coluna "done"
 
   const fetchDemands = async () => {
     if (!user) return [];
@@ -419,15 +429,27 @@ const KanbanBoard = () => {
           onDragEnd={handleDragEnd}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {columns.map((status) => (
-              <KanbanColumn
-                key={status}
-                id={status}
-                title={statusLabels[status]}
-                demands={getDemandsByStatus(status)}
-                onEdit={handleEditDemand} // Passar onEdit para a coluna
-              />
-            ))}
+            {columns.map((status) => {
+              const allDemandsForStatus = getDemandsByStatus(status);
+              const demandsToDisplay = status === "done"
+                ? allDemandsForStatus.slice(0, visibleDoneDemandsCount)
+                : allDemandsForStatus;
+
+              const showLoadMore = status === "done" && allDemandsForStatus.length > visibleDoneDemandsCount;
+
+              return (
+                <KanbanColumn
+                  key={status}
+                  id={status}
+                  title={statusLabels[status]}
+                  demands={demandsToDisplay}
+                  totalDemandsCount={allDemandsForStatus.length}
+                  onEdit={handleEditDemand}
+                  showLoadMore={showLoadMore}
+                  onLoadMore={() => setVisibleDoneDemandsCount(prev => prev + 5)}
+                />
+              );
+            })}
           </div>
 
           <DragOverlay>
