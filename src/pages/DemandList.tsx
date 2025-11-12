@@ -28,7 +28,7 @@ const DemandList = () => {
   const [currentView, setCurrentView] = useState<"grid" | "table" | "calendar" | "gantt">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("active"); // Alterado para 'active' como padrão
   const [filterType, setFilterType] = useState<string>("all");
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -223,7 +223,15 @@ const DemandList = () => {
       (demand.creatorEmail?.toLowerCase().includes(searchTerm.toLowerCase())); // Incluir creatorEmail na busca
 
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
-    const matchesStatus = filterStatus === "all" || demand.status === filterStatus;
+    
+    // Lógica para o novo filtro de status
+    let matchesStatus = true;
+    if (filterStatus === "active") {
+      matchesStatus = demand.status !== "done";
+    } else if (filterStatus !== "all") {
+      matchesStatus = demand.status === filterStatus;
+    }
+
     const matchesType = filterType === "all" || demand.type === filterType;
 
     // Novo filtro por intervalo de datas
@@ -324,6 +332,19 @@ const DemandList = () => {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-4"> {/* Novo wrapper div para alinhamento */}
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} /> {/* Novo componente */}
+            <Select value={filterStatus} onValueChange={setFilterStatus}> {/* Novo filtro de status */}
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="active">Demandas Ativas</SelectItem> {/* Nova opção */}
+                <SelectItem value="todo">A Fazer</SelectItem>
+                <SelectItem value="in-progress">Em Andamento</SelectItem>
+                <SelectItem value="testing">Em Teste</SelectItem>
+                <SelectItem value="done">Concluído</SelectItem>
+              </SelectContent>
+            </Select>
             <DemandDialog
               demand={editingDemand}
               onSave={handleSaveDemand}
@@ -375,7 +396,7 @@ const DemandList = () => {
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2"> {/* Reduzido para 2 colunas, pois o status foi movido */}
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger>
                 <SelectValue placeholder="Prioridade" />
@@ -388,18 +409,7 @@ const DemandList = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="todo">A Fazer</SelectItem>
-                <SelectItem value="in-progress">Em Andamento</SelectItem>
-                <SelectItem value="testing">Em Teste</SelectItem>
-                <SelectItem value="done">Concluído</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* O filtro de status original foi removido daqui e movido para o cabeçalho */}
 
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger>
