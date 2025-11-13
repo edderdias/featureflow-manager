@@ -300,7 +300,10 @@ const DemandList = () => {
 
   const demandsWithDates = filteredDemands.map((demand) => ({
     ...demand,
-    endDate: demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
+    // Prioriza completedAt se a demanda estiver concluída, senão dueDate, senão createdAt + 7 dias
+    endDate: demand.status === "done" && demand.completedAt
+      ? demand.completedAt
+      : demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
   }));
 
 
