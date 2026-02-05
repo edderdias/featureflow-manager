@@ -68,7 +68,7 @@ const Login = () => {
       <div className="flex w-full max-w-6xl rounded-lg shadow-lg overflow-hidden bg-card">
         {/* Left side: Login Form */}
         <div className="w-full md:w-[30%] p-8 space-y-6 flex flex-col justify-center">
-          <img src="/logo.svg" alt="ToqDesk Logo" className="h-24 w-24 mx-auto mb-4" />
+          <img src="/logo.png" alt="ToqDesk Logo" className="h-24 w-24 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
           <Auth
             supabaseClient={supabase}
