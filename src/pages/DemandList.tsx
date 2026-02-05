@@ -354,7 +354,14 @@ const DemandList = () => {
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
               trigger={
-                <Button size="lg" className="gap-2">
+                <Button 
+                  size="lg" 
+                  className="gap-2"
+                  onClick={() => {
+                    setEditingDemand(undefined); // Limpa a demanda em edição
+                    setIsDialogOpen(true); // Abre o diálogo
+                  }}
+                >
                   <Plus className="h-5 w-5" />
                   Nova Demanda
                 </Button>
