@@ -192,6 +192,25 @@ const ClientDemand = () => {
       client_cnpj: formData.client_cnpj || null, // Garante que client_cnpj seja null se vazio (embora seja obrigatório)
     };
 
+    console.log('Payload da demanda sendo enviado:', JSON.stringify({
+      user_id: demandToSave.user_id,
+      title: demandToSave.title,
+      description: demandToSave.description,
+      type: demandToSave.type,
+      priority: demandToSave.priority,
+      status: demandToSave.status,
+      system: demandToSave.system,
+      responsible: demandToSave.responsible,
+      created_at: demandToSave.createdAt?.toISOString(),
+      updated_at: demandToSave.updatedAt?.toISOString(),
+      client_cnpj: demandToSave.client_cnpj,
+      client_email: demandToSave.client_email,
+      client_name: demandToSave.client_name,
+      attachments: demandToSave.attachments,
+      creator_name: demandToSave.creatorName,
+      creator_email: demandToSave.creatorEmail,
+    }, null, 2)); // Log formatado para melhor leitura
+
     const { data, error } = await supabase
       .from("demands")
       .insert([
@@ -216,7 +235,7 @@ const ClientDemand = () => {
       ])
       .select()
       .single();
-    console.log('Demanda a ser salva:', JSON.stringify(demandToSave)); // Log para depuração
+    
     if (error) {
       console.error("Error submitting demand:", error);
       toast.error(`Erro ao enviar demanda: ${error.message}`);
