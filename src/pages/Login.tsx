@@ -3,8 +3,8 @@ import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom"; // Importar Link
-import { Button } from "@/components/ui/button"; // Importar Button
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const portugueseLocalization = {
   variables: {
@@ -64,34 +64,42 @@ const Login = () => {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-background">
-      <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-lg shadow-lg">
-        <img src="/logo.svg" alt="ToqDesk Logo" className="h-52 w-52 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
-        <Auth
-          supabaseClient={supabase}
-          providers={[]}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: "hsl(var(--primary))",
-                  brandAccent: "hsl(var(--primary-foreground))",
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex w-full max-w-6xl rounded-lg shadow-lg overflow-hidden bg-card">
+        {/* Left side: Login Form */}
+        <div className="w-full md:w-1/2 p-8 space-y-6 flex flex-col justify-center">
+          <img src="/logo.svg" alt="ToqDesk Logo" className="h-24 w-24 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
+          <Auth
+            supabaseClient={supabase}
+            providers={[]}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: "hsl(var(--primary))",
+                    brandAccent: "hsl(var(--primary-foreground))",
+                  },
                 },
               },
-            },
-          }}
-          theme="light"
-          redirectTo={window.location.origin + '/login'}
-          localization={portugueseLocalization} // Adicionado para traduzir os rótulos
-        />
-        <div className="text-center mt-4">
-          <Link to="/client-demand">
-            <Button variant="outline" className="w-full">
-              Abrir Demanda de Cliente
-            </Button>
-          </Link>
+            }}
+            theme="light"
+            redirectTo={window.location.origin + '/login'}
+            localization={portugueseLocalization}
+          />
+          <div className="text-center mt-4">
+            <Link to="/client-demand">
+              <Button variant="outline" className="w-full">
+                Abrir Demanda de Cliente
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Right side: Image */}
+        <div className="hidden md:flex md:w-1/2 bg-primary/10 items-center justify-center p-8">
+          <img src="/toqdesk.png" alt="ToqDesk Illustration" className="max-w-full h-auto object-contain" />
         </div>
       </div>
     </div>
