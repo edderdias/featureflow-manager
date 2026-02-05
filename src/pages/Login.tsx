@@ -67,7 +67,7 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="flex w-full max-w-6xl rounded-lg shadow-lg overflow-hidden bg-card">
         {/* Left side: Login Form */}
-        <div className="w-full md:w-[20%] p-8 space-y-6 flex flex-col justify-center"> {/* Alterado de md:w-[30%] para md:w-[20%] */}
+        <div className="w-full md:w-[30%] p-8 space-y-6 flex flex-col justify-center"> {/* Revertido para md:w-[30%] */}
           <img src="/logo.png" alt="ToqDesk Logo" className="h-32 w-32 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
           <Auth
@@ -98,7 +98,7 @@ const Login = () => {
         </div>
 
         {/* Right side: Image */}
-        <div className="hidden md:flex md:w-[80%] bg-primary/10 items-center justify-center p-0"> {/* Alterado de md:w-[70%] para md:w-[80%] */}
+        <div className="hidden md:flex md:w-[70%] bg-primary/10 items-center justify-center p-0"> {/* Revertido para md:w-[70%] */}
           <img src="/toqdesk.png" alt="ToqDesk Illustration" className="w-full h-full object-cover" />
         </div>
       </div>
