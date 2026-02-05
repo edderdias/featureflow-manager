@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import { SessionContextProvider, useAuth } from "./integrations/supabase/auth";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
-import TechnicianProtectedRoute from "./components/TechnicianProtectedRoute"; // Importar TechnicianProtectedRoute
+import TechnicianProtectedRoute from "./components/TechnicianProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -15,15 +15,13 @@ const KanbanBoard = React.lazy(() => import("./pages/KanbanBoard"));
 const Reports = React.lazy(() => import("./pages/Reports"));
 const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
-import Login from "./pages/Login"; // Importação direta para Login
+const Login = React.lazy(() => import("./pages/Login")); // Alterado para lazy load
 const ClientDemand = React.lazy(() => import("./pages/ClientDemand"));
-const ConfirmInvite = React.lazy(() => import("./pages/ConfirmInvite")); // Lazy load ConfirmInvite
+const ConfirmInvite = React.lazy(() => import("./pages/ConfirmInvite"));
 
-// Lazy load GlobalProviders
+// Lazy load GlobalProviders e Navigation
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
-
-// Importação DIRETA da Navigation para depuração
-import { Navigation } from "./components/Navigation"; 
+const Navigation = React.lazy(() => import("./components/Navigation").then(m => ({ default: m.Navigation })));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, isLoading } = useAuth();
@@ -60,14 +58,15 @@ const AppRoutes = () => {
   return (
     <>
       {session && (
-        // Usando a importação direta
-        <Navigation /> 
+        <Suspense fallback={null}>
+          <Navigation />
+        </Suspense>
       )}
       <Suspense fallback={<div className="flex justify-center items-center min-h-screen text-muted-foreground">Carregando página...</div>}>
         <Routes>
-          <Route path="/login" element={<Login />} /> {/* Usando o componente Login importado diretamente */}
+          <Route path="/login" element={<Login />} />
           <Route path="/client-demand" element={<ClientDemand />} />
-          <Route path="/confirm-invite" element={<ConfirmInvite />} /> {/* Nova rota para confirmar convite */}
+          <Route path="/confirm-invite" element={<ConfirmInvite />} />
           <Route
             path="/"
             element={
@@ -95,7 +94,7 @@ const AppRoutes = () => {
           <Route
             path="/reports"
             element={
-              <TechnicianProtectedRoute> {/* Apenas técnicos e admins */}
+              <TechnicianProtectedRoute>
                 <Reports />
               </TechnicianProtectedRoute>
             }
@@ -103,7 +102,7 @@ const AppRoutes = () => {
           <Route
             path="/tags"
             element={
-              <TechnicianProtectedRoute> {/* Apenas técnicos e admins */}
+              <TechnicianProtectedRoute>
                 <TagManagement />
               </TechnicianProtectedRoute>
             }
@@ -111,7 +110,7 @@ const AppRoutes = () => {
           <Route
             path="/users"
             element={
-              <AdminProtectedRoute> {/* Apenas admins */}
+              <AdminProtectedRoute>
                 <UserManagement />
               </AdminProtectedRoute>
             }

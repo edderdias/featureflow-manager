@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, Suspense } from "react"; // Adicionado Suspense e React
 import { DemandStatus, Demand } from "@/types/demand";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,11 @@ import { ptBR } from "date-fns/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
-import { toast } from "sonner"; // Import toast for notifications
-import { DemandDialog } from "@/components/DemandDialog"; // Importar DemandDialog
-import { cn } from "@/lib/utils"; // Importar cn para classes condicionais
-import { Button } from "@/components/ui/button"; // Importar Button para o botão "Ver Mais"
+import { toast } from "sonner";
+// Removido import direto do DemandDialog
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-// DND imports
 import {
   DndContext,
   closestCorners,
@@ -27,7 +26,7 @@ import {
   DragOverlay,
   UniqueIdentifier,
   useDroppable,
-  useDndContext, // Importar useDndContext
+  useDndContext,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -36,10 +35,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Component for a draggable DemandCard
+// Lazy load DemandDialog
+const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
+
 interface DraggableDemandCardProps {
   demand: Demand;
-  onEdit: (demand: Demand) => void; // Adicionado prop onEdit
+  onEdit: (demand: Demand) => void;
 }
 
 const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
@@ -68,8 +69,8 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners} // Listeners para arrastar
-      onDoubleClick={() => onEdit(demand)} // Handler para duplo clique
+      {...listeners}
+      onDoubleClick={() => onEdit(demand)}
       className="cursor-grab hover:shadow-lg transition-all duration-300 group mb-3"
     >
       {demand.tags && demand.tags.length > 0 && (
@@ -83,7 +84,6 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
           </div>
         </div>
       )}
-
       <CardHeader className="pb-3">
         <CardTitle className="text-base leading-tight group-hover:text-primary transition-colors">
           {demand.title}
@@ -97,10 +97,8 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
           </Badge>
         </div>
       </CardHeader>
-
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground line-clamp-2">{demand.description}</p>
-
         {demand.checklist && demand.checklist.length > 0 && (
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -112,7 +110,6 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
             <Progress value={checklistProgress} className="h-1" />
           </div>
         )}
-
         <div className="flex flex-wrap gap-3 text-xs">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <User className="h-3 w-3" />
@@ -131,7 +128,6 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
             </div>
           )}
         </div>
-
         <div className="flex items-center justify-between pt-1">
           <Badge variant="outline" className="text-xs font-mono">
             {demand.system.toUpperCase()}
@@ -143,7 +139,6 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
             </div>
           )}
         </div>
-
         {demand.sprint && (
           <div className="pt-1 border-t">
             <Badge variant="secondary" className="text-xs">
@@ -156,12 +151,11 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
   );
 };
 
-// Component for a droppable Kanban column
 interface KanbanColumnProps {
   id: DemandStatus;
   title: string;
-  demands: Demand[]; // Demands to display (could be sliced)
-  totalDemandsCount: number; // Total demands for this status (for header count)
+  demands: Demand[];
+  totalDemandsCount: number;
   onEdit: (demand: Demand) => void;
   showLoadMore?: boolean;
   onLoadMore?: () => void;
@@ -169,15 +163,15 @@ interface KanbanColumnProps {
 
 const KanbanColumn = ({ id, title, demands, totalDemandsCount, onEdit, showLoadMore, onLoadMore }: KanbanColumnProps) => {
   const { setNodeRef } = useDroppable({ id });
-  const { active } = useDndContext(); // Hook para verificar se há um item sendo arrastado
-  const isDraggingOver = active && active.id !== id; // Verifica se um item está sendo arrastado e não é a própria coluna
+  const { active } = useDndContext();
+  const isDraggingOver = active && active.id !== id;
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
         "flex flex-col bg-muted/30 p-4 rounded-lg shadow-sm min-h-[200px]",
-        isDraggingOver && "border-2 border-dashed border-primary-foreground/50 bg-primary/10" // Estilo visual quando arrastando sobre a coluna
+        isDraggingOver && "border-2 border-dashed border-primary-foreground/50 bg-primary/10"
       )}
     >
       <div className="mb-4">
@@ -186,14 +180,12 @@ const KanbanColumn = ({ id, title, demands, totalDemandsCount, onEdit, showLoadM
           {totalDemandsCount} {totalDemandsCount === 1 ? "demanda" : "demandas"}
         </p>
       </div>
-
       <div className="space-y-3 flex-1">
-        <SortableContext items={demands.map(d => d.id)} id={id}> {/* Explicitamente definindo o id aqui */}
+        <SortableContext items={demands.map(d => d.id)} id={id}>
           {demands.map((demand) => (
             <DraggableDemandCard key={demand.id} demand={demand} onEdit={onEdit} />
           ))}
         </SortableContext>
-
         {demands.length === 0 && totalDemandsCount === 0 && (
           <div className="flex items-center justify-center h-32 border-2 border-dashed rounded-lg border-border text-muted-foreground text-sm">
             Nenhuma demanda
@@ -209,29 +201,22 @@ const KanbanColumn = ({ id, title, demands, totalDemandsCount, onEdit, showLoadM
   );
 };
 
-
 const columns: DemandStatus[] = ["todo", "in-progress", "testing", "done"];
 
 const KanbanBoard = () => {
-  const { user, userRole } = useAuth(); // Obter userRole
+  const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // Estado para o diálogo de edição
-  const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined); // Estado para a demanda sendo editada
-  const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5); // Estado para controlar a paginação da coluna "done"
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
+  const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5);
 
   const fetchDemands = async () => {
     if (!user) return [];
-
     let query = supabase.from("demands").select("*");
-
-    // Se o papel for 'user', filtra apenas as demandas criadas por ele
     if (userRole === "user") {
       query = query.eq("user_id", user.id);
     }
-    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
-    // pois as políticas RLS já permitem que vejam todas as demandas.
-
     const { data, error } = await query;
     if (error) throw error;
     return data.map((d: any) => ({
@@ -247,45 +232,38 @@ const KanbanBoard = () => {
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
+    queryKey: ["demands", user?.id, userRole],
     queryFn: fetchDemands,
     enabled: !!user,
   });
 
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
-      console.log("Received updatedDemandData in mutation:", updatedDemandData);
-      console.log("Status received in mutation:", updatedDemandData.status);
-
       if (!user) throw new Error("Usuário não autenticado");
       if (!updatedDemandData.id) throw new Error("Demand ID is required for update.");
-      if (!updatedDemandData.status) throw new Error("Demand status cannot be empty."); // Ensure status is always present
-
+      if (!updatedDemandData.status) throw new Error("Demand status cannot be empty.");
       const payload = {
         title: updatedDemandData.title ?? null,
         description: updatedDemandData.description ?? null,
         type: updatedDemandData.type ?? null,
         priority: updatedDemandData.priority ?? null,
-        status: updatedDemandData.status, // This is the critical field, must be present
+        status: updatedDemandData.status,
         system: updatedDemandData.system ?? null,
         responsible: updatedDemandData.responsible ?? null,
         due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
         completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
         story_points: updatedDemandData.storyPoints ?? null,
         sprint: updatedDemandData.sprint ?? null,
-        checklist: updatedDemandData.checklist ?? [], // Ensure it's an array, not null
-        attachments: updatedDemandData.attachments ?? [], // Ensure it's an array, not null
-        tags: updatedDemandData.tags ?? [], // Ensure it's an array, not null
+        checklist: updatedDemandData.checklist ?? [],
+        attachments: updatedDemandData.attachments ?? [],
+        tags: updatedDemandData.tags ?? [],
         client_cnpj: updatedDemandData.client_cnpj ?? null,
         client_email: updatedDemandData.client_email ?? null,
         client_name: updatedDemandData.client_name ?? null,
         creator_name: updatedDemandData.creatorName ?? null,
-        creator_email: updatedDemandData.creatorEmail ?? null, // Incluir creatorEmail na atualização
-        updated_at: new Date().toISOString(), // Always update updatedAt
+        creator_email: updatedDemandData.creatorEmail ?? null,
+        updated_at: new Date().toISOString(),
       };
-
-      console.log("Payload being sent to Supabase:", payload); // Log para depuração
-
       const { data, error } = await supabase
         .from("demands")
         .update(payload)
@@ -318,8 +296,8 @@ const KanbanBoard = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 250, // Ativa o arrasto após 250ms de clique e segurar
-        tolerance: 5, // Ou após mover 5px
+        delay: 250,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -337,58 +315,38 @@ const KanbanBoard = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (!over) {
       setActiveDragId(null);
       return;
     }
-
     const draggedDemandId = active.id as string;
     let newStatus: DemandStatus | undefined;
-
-    // Check if the drop target is a column itself (droppable area)
     if (columns.includes(over.id as DemandStatus)) {
       newStatus = over.id as DemandStatus;
-      console.log("Dropped directly onto column (empty area or between items):", newStatus);
     } else if (over.data.current?.sortable?.containerId) {
-      // If dropped onto a sortable item, get the ID of its parent container (the column)
       newStatus = over.data.current.sortable.containerId as DemandStatus;
-      console.log("Dropped onto sortable item, parent column:", newStatus);
     } else {
-      console.error("Could not determine new status for the demand. over.id:", over.id, "over.data.current:", over.data.current);
       setActiveDragId(null);
       return;
     }
-
-    console.log("Dragged Demand ID:", draggedDemandId);
-    console.log("Determined New Status:", newStatus);
-
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
-
     if (draggedDemand && draggedDemand.status !== newStatus) {
-      console.log("Original Demand Status:", draggedDemand.status);
-
-      // Optimistic update
       queryClient.setQueryData(["demands", user?.id, userRole], (oldDemands: Demand[] | undefined) => {
         if (!oldDemands) return [];
         return oldDemands.map(d =>
           d.id === draggedDemandId ? { ...d, status: newStatus } : d
         );
       });
-
       const updatedDemand: Partial<Demand> = {
         ...draggedDemand,
         status: newStatus,
         updatedAt: new Date(),
       };
-
       if (newStatus === "done" && !draggedDemand.completedAt) {
         updatedDemand.completedAt = new Date();
       } else if (newStatus !== "done" && draggedDemand.completedAt) {
         updatedDemand.completedAt = undefined;
       }
-
-      console.log("Constructed updatedDemand object sent to mutate:", updatedDemand);
       updateDemandMutation.mutate(updatedDemand);
     }
     setActiveDragId(null);
@@ -421,7 +379,6 @@ const KanbanBoard = () => {
             Visualize e organize o fluxo de trabalho das demandas
           </p>
         </div>
-
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -434,9 +391,7 @@ const KanbanBoard = () => {
               const demandsToDisplay = status === "done"
                 ? allDemandsForStatus.slice(0, visibleDoneDemandsCount)
                 : allDemandsForStatus;
-
               const showLoadMore = status === "done" && allDemandsForStatus.length > visibleDoneDemandsCount;
-
               return (
                 <KanbanColumn
                   key={status}
@@ -451,21 +406,21 @@ const KanbanBoard = () => {
               );
             })}
           </div>
-
           <DragOverlay>
             {activeDemand ? (
               <DraggableDemandCard demand={activeDemand} onEdit={handleEditDemand} />
             ) : null}
           </DragOverlay>
         </DndContext>
-
         {editingDemand && (
-          <DemandDialog
-            demand={editingDemand}
-            onSave={handleSaveDemand}
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-          />
+          <Suspense fallback={null}>
+            <DemandDialog
+              demand={editingDemand}
+              onSave={handleSaveDemand}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+            />
+          </Suspense>
         )}
       </div>
     </div>

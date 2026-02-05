@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { useState, Suspense } from "react"; // Adicionado Suspense e React
 import { DemandCard } from "@/components/DemandCard";
-import { DemandDialog } from "@/components/DemandDialog";
+// Removido import direto do DemandDialog
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,66 +12,58 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval } from "date-fns"; // Adicionado isWithinInterval
+import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels, getStatusColor } from "@/lib/demandUtils";
-import { DateRangePicker } from "@/components/DateRangePicker"; // Novo import
-import { DateRange } from "react-day-picker"; // Novo import
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
+
+// Lazy load DemandDialog
+const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
 const DemandList = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, userRole } = useAuth(); // Obter userRole
+  const { user, userRole } = useAuth();
 
   const [currentView, setCurrentView] = useState<"grid" | "table" | "calendar" | "gantt">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("active"); // Alterado para 'active' como padrão
+  const [filterStatus, setFilterStatus] = useState<string>("active");
   const [filterType, setFilterType] = useState<string>("all");
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // State for Table View sorting
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // State for Calendar View
   const [calendarCurrentDate, setCalendarCurrentDate] = useState(new Date());
-
-  // Novo estado para o intervalo de datas
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const fetchDemands = async () => {
     if (!user) return [];
-
     let query = supabase.from("demands").select("*");
-
-    // Se o papel for 'user', filtra apenas as demandas criadas por ele
     if (userRole === "user") {
       query = query.eq("user_id", user.id);
     }
-    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
-    // pois as políticas RLS já permitem que vejam todas as demandas.
-
     const { data, error } = await query;
-    
     if (error) throw error;
     return data.map((d: any) => ({
       ...d,
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
-      completedAt: d.completed_at ? new Date(d.completed_at) : undefined, // Mapear completed_at
+      completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
       storyPoints: d.story_points,
-      creatorName: d.creator_name, // Mapear o novo campo creatorName
-      creatorEmail: d.creator_email, // Mapear o novo campo creatorEmail
+      creatorName: d.creator_name,
+      creatorEmail: d.creator_email,
     })) as Demand[];
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
+    queryKey: ["demands", user?.id, userRole],
     queryFn: fetchDemands,
     enabled: !!user,
   });
@@ -79,9 +71,7 @@ const DemandList = () => {
   const addDemandMutation = useMutation({
     mutationFn: async (newDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
-
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = newDemandData; // Incluir creatorEmail
-
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = newDemandData;
       const { data, error } = await supabase
         .from("demands")
         .insert({
@@ -90,10 +80,10 @@ const DemandList = () => {
           created_at: (createdAt || new Date()).toISOString(),
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
-          completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
+          completed_at: completedAt ? completedAt.toISOString() : null,
           story_points: storyPoints,
-          creator_name: creatorName, // Salvar creatorName
-          creator_email: creatorEmail, // Salvar creatorEmail
+          creator_name: creatorName,
+          creator_email: creatorEmail,
           client_email: creatorEmail,
           client_name: creatorName,
         })
@@ -115,20 +105,17 @@ const DemandList = () => {
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
-
-      // Agora, creatorName e creatorEmail são incluídos na atualização
       const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = updatedDemandData;
-
       const { data, error } = await supabase
         .from("demands")
         .update({
           ...rest,
           updated_at: (updatedAt || new Date()).toISOString(),
           due_date: dueDate ? dueDate.toISOString() : null,
-          completed_at: completedAt ? completedAt.toISOString() : null, // Salvar completed_at
+          completed_at: completedAt ? completedAt.toISOString() : null,
           story_points: storyPoints,
-          creator_name: creatorName, // Incluir creatorName na atualização
-          creator_email: creatorEmail, // Incluir creatorEmail na atualização
+          creator_name: creatorName,
+          creator_email: creatorEmail,
         })
         .eq("id", updatedDemandData.id)
         .select()
@@ -150,10 +137,7 @@ const DemandList = () => {
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error("Usuário não autenticado");
-      const { error } = await supabase
-        .from("demands")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("demands").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -219,30 +203,23 @@ const DemandList = () => {
       (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.creatorName?.toLowerCase().includes(searchTerm.toLowerCase())) || // Incluir creatorName na busca
-      (demand.creatorEmail?.toLowerCase().includes(searchTerm.toLowerCase())); // Incluir creatorEmail na busca
+      (demand.creatorName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (demand.creatorEmail?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
-    
-    // Lógica para o novo filtro de status
     let matchesStatus = true;
     if (filterStatus === "active") {
       matchesStatus = demand.status !== "done";
     } else if (filterStatus !== "all") {
       matchesStatus = demand.status === filterStatus;
     }
-
     const matchesType = filterType === "all" || demand.type === filterType;
-
-    // Novo filtro por intervalo de datas
     const matchesDateRange = !dateRange?.from || !dateRange?.to || (
       demand.createdAt && isWithinInterval(demand.createdAt, { start: dateRange.from, end: dateRange.to })
     );
-
     return matchesSearch && matchesPriority && matchesStatus && matchesType && matchesDateRange;
   });
 
-  // --- Table View Logic ---
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -255,20 +232,15 @@ const DemandList = () => {
   const sortedDemands = [...filteredDemands].sort((a, b) => {
     let aValue: any = (a as any)[sortField];
     let bValue: any = (b as any)[sortField];
-
     if (aValue instanceof Date) aValue = aValue.getTime();
     if (bValue instanceof Date) bValue = bValue.getTime();
-
     if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
     if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
     return 0;
   });
 
-  // --- Calendar View Logic ---
   const monthStart = startOfMonth(calendarCurrentDate);
   const monthEnd = endOfMonth(calendarCurrentDate);
-  
-  // Ajuste para incluir dias do mês anterior e seguinte para preencher a grade da semana
   const startDayOfCalendar = startOfWeek(monthStart);
   const endDayOfCalendar = endOfWeek(monthEnd);
   const daysInCalendar = eachDayOfInterval({ start: startDayOfCalendar, end: endDayOfCalendar });
@@ -279,11 +251,9 @@ const DemandList = () => {
 
   const previousMonth = () => setCalendarCurrentDate(subMonths(calendarCurrentDate, 1));
   const nextMonth = () => setCalendarCurrentDate(addMonths(calendarCurrentDate, 1));
-
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-  // --- Gantt View Logic ---
-  const ganttMonthStart = startOfMonth(calendarCurrentDate); // Reusing calendar date for Gantt
+  const ganttMonthStart = startOfMonth(calendarCurrentDate);
   const ganttMonthEnd = endOfMonth(calendarCurrentDate);
   const ganttDaysInMonth = eachDayOfInterval({ start: ganttMonthStart, end: ganttMonthEnd });
 
@@ -291,7 +261,6 @@ const DemandList = () => {
     const start = Math.max(0, differenceInDays(startDate, ganttMonthStart));
     const duration = differenceInDays(endDate, startDate) || 1;
     const totalDays = ganttDaysInMonth.length;
-
     return {
       left: `${(start / totalDays) * 100}%`,
       width: `${(duration / totalDays) * 100}%`,
@@ -300,12 +269,10 @@ const DemandList = () => {
 
   const demandsWithDates = filteredDemands.map((demand) => ({
     ...demand,
-    // Prioriza completedAt se a demanda estiver concluída, senão dueDate, senão createdAt + 7 dias
     endDate: demand.status === "done" && demand.completedAt
       ? demand.completedAt
       : demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
   }));
-
 
   if (isLoading) {
     return (
@@ -333,44 +300,45 @@ const DemandList = () => {
               Visualize suas demandas de diferentes formas
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4"> {/* Novo wrapper div para alinhamento */}
-            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} /> {/* Novo componente */}
-            <Select value={filterStatus} onValueChange={setFilterStatus}> {/* Novo filtro de status */}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full md:w-[200px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="active">Demandas Ativas</SelectItem> {/* Nova opção */}
+                <SelectItem value="active">Demandas Ativas</SelectItem>
                 <SelectItem value="todo">A Fazer</SelectItem>
                 <SelectItem value="in-progress">Em Andamento</SelectItem>
                 <SelectItem value="testing">Em Teste</SelectItem>
                 <SelectItem value="done">Concluído</SelectItem>
               </SelectContent>
             </Select>
-            <DemandDialog
-              demand={editingDemand}
-              onSave={handleSaveDemand}
-              open={isDialogOpen}
-              onOpenChange={setIsDialogOpen}
-              trigger={
-                <Button 
-                  size="lg" 
-                  className="gap-2"
-                  onClick={() => {
-                    setEditingDemand(undefined); // Limpa a demanda em edição
-                    setIsDialogOpen(true); // Abre o diálogo
-                  }}
-                >
-                  <Plus className="h-5 w-5" />
-                  Nova Demanda
-                </Button>
-              }
-            />
+            <Suspense fallback={<Button size="lg" disabled>Carregando...</Button>}>
+              <DemandDialog
+                demand={editingDemand}
+                onSave={handleSaveDemand}
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                trigger={
+                  <Button 
+                    size="lg" 
+                    className="gap-2"
+                    onClick={() => {
+                      setEditingDemand(undefined);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-5 w-5" />
+                    Nova Demanda
+                  </Button>
+                }
+              />
+            </Suspense>
           </div>
         </div>
 
-        {/* View Selector */}
         <div className="mb-6">
           <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as "grid" | "table" | "calendar" | "gantt")} className="w-full">
             <TabsList className="grid w-full grid-cols-4 lg:w-auto">
@@ -394,7 +362,6 @@ const DemandList = () => {
           </Tabs>
         </div>
 
-        {/* Filters */}
         <div className="mb-6 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -405,8 +372,7 @@ const DemandList = () => {
               className="pl-10"
             />
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2"> {/* Reduzido para 2 colunas, pois o status foi movido */}
+          <div className="grid gap-4 md:grid-cols-2">
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger>
                 <SelectValue placeholder="Prioridade" />
@@ -418,9 +384,6 @@ const DemandList = () => {
                 <SelectItem value="low">Baixa</SelectItem>
               </SelectContent>
             </Select>
-
-            {/* O filtro de status original foi removido daqui e movido para o cabeçalho */}
-
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger>
                 <SelectValue placeholder="Tipo" />
@@ -435,7 +398,6 @@ const DemandList = () => {
           </div>
         </div>
 
-        {/* Demands Display Area */}
         <div className="mb-4">
           <p className="text-sm text-muted-foreground">
             Mostrando {filteredDemands.length} de {demands?.length || 0} demandas
@@ -456,7 +418,7 @@ const DemandList = () => {
                 demand={demand} 
                 onEdit={handleEditDemand} 
                 onDelete={handleDeleteDemand} 
-                onComplete={handleCompleteDemand} // Passar a função de concluir
+                onComplete={handleCompleteDemand}
               />
             ))}
           </div>
@@ -554,18 +516,15 @@ const DemandList = () => {
                 </Button>
               </div>
             </div>
-
             <div className="grid grid-cols-7 gap-2">
               {weekDays.map((day) => (
                 <div key={day} className="text-center font-semibold text-sm p-2">
                   {day}
                 </div>
               ))}
-
-              {daysInCalendar.map((day) => { {/* Alterado para daysInCalendar */}
+              {daysInCalendar.map((day) => {
                 const dayDemands = getDemandsByDate(day);
                 const isCurrentMonth = isSameMonth(day, calendarCurrentDate);
-
                 return (
                   <div
                     key={day.toISOString()}
@@ -600,10 +559,8 @@ const DemandList = () => {
                 {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
               </h2>
             </div>
-
             <div className="overflow-x-auto">
               <div className="min-w-[1200px]">
-                {/* Header with dates */}
                 <div className="flex border-b mb-4 pb-2">
                   <div className="w-64 font-semibold">Demanda</div>
                   <div className="flex-1 flex">
@@ -614,8 +571,6 @@ const DemandList = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Gantt rows */}
                 <div className="space-y-2">
                   {demandsWithDates.map((demand) => (
                     <div key={demand.id} className="p-2 border rounded-md">
