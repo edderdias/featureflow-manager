@@ -441,9 +441,17 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                 id="dueDate"
                 type="date"
                 value={formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, dueDate: e.target.value ? new Date(e.target.value) : undefined })
-                }
+                onChange={(e) => {
+                  const dateString = e.target.value;
+                  if (dateString) {
+                    const [year, month, day] = dateString.split('-').map(Number);
+                    // Cria uma nova data no fuso horário local para evitar problemas de UTC
+                    const localDate = new Date(year, month - 1, day);
+                    setFormData({ ...formData, dueDate: localDate });
+                  } else {
+                    setFormData({ ...formData, dueDate: undefined });
+                  }
+                }}
               />
             </div>
 
