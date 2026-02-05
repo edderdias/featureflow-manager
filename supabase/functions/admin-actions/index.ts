@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS", // Adicionado PATCH e outros métodos
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
 serve(async (req) => {
@@ -14,101 +14,59 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-      console.error("Edge Function Error: Missing Supabase environment variables.");
-      return new Response(JSON.stringify({ error: "Missing Supabase environment variables. Please ensure SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set." }), {
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      return new Response(JSON.stringify({ error: "Missing environment variables." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
     }
 
-    // Extract the user's JWT from the Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error("Edge Function Error: Authorization header missing.");
       return new Response(JSON.stringify({ error: "Authorization header missing." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
+
+    const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Verificação de Admin
     const token = authHeader.replace("Bearer ", "");
+    const { data: { user: authUser }, error: getUserError } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    }).auth.getUser();
 
-    // Create a Supabase client with the user's JWT for authentication
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: {
-            "x-client-info": "supabase-edge-function",
-            "Authorization": `Bearer ${token}`, // Pass the user's JWT
-          },
-        },
-      }
-    );
-
-    // Verify user's authentication
-    const { data: { user: authUser }, error: getUserError } = await supabaseClient.auth.getUser();
-
-    if (getUserError) {
-      console.error("Edge Function Error: Failed to get authenticated user.", getUserError);
-      return new Response(JSON.stringify({ error: `Authentication failed: ${getUserError.message}` }), {
+    if (getUserError || !authUser) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
 
-    if (!authUser) {
-      console.error("Edge Function Error: Unauthorized - No authenticated user found.");
-      return new Response(JSON.stringify({ error: "Unauthorized: No authenticated user found. Please log in." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
-      });
-    }
-
-    // Use the service role key for operations that require elevated privileges
-    const supabaseAdminClient = createClient(
-      supabaseUrl,
-      supabaseServiceRoleKey,
-      {
-        global: { headers: { "x-client-info": "supabase-edge-function" } },
-      }
-    );
-
-    // --- START: Admin role check ---
-    const { data: callerProfile, error: callerProfileError } = await supabaseAdminClient
+    const { data: callerProfile } = await supabaseAdminClient
       .from("profiles")
       .select("role")
       .eq("id", authUser.id)
       .single();
 
-    if (callerProfileError || callerProfile?.role !== "admin") {
-      console.error("Edge Function Error: Unauthorized - User is not an admin.", callerProfileError);
-      return new Response(JSON.stringify({ error: "Unauthorized: Only administrators can perform this action." }), {
+    if (callerProfile?.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 403, // Forbidden
+        status: 403,
       });
     }
-    // --- END: Admin role check ---
 
     if (req.method === "GET") {
-      // List all users with their profiles
       const { data: authUsers, error: authUsersError } = await supabaseAdminClient.auth.admin.listUsers();
-      if (authUsersError) {
-        console.error("Edge Function Error: Failed to list users from auth.admin:", authUsersError);
-        throw authUsersError;
-      }
+      if (authUsersError) throw authUsersError;
 
       const { data: profiles, error: profilesDataError } = await supabaseAdminClient
         .from("profiles")
-        .select("id, first_name, last_name, avatar_url, role");
-      if (profilesDataError) {
-        console.error("Edge Function Error: Failed to fetch profiles from public.profiles:", profilesDataError);
-        throw profilesDataError;
-      }
+        .select("*");
+      if (profilesDataError) throw profilesDataError;
 
       const usersWithProfiles = authUsers.users.map(user => {
         const userProfile = profiles.find(p => p.id === user.id);
@@ -118,10 +76,10 @@ serve(async (req) => {
           first_name: userProfile?.first_name || null,
           last_name: userProfile?.last_name || null,
           avatar_url: userProfile?.avatar_url || null,
-          role: userProfile?.role || "user", // Default to 'user' if role not found
+          role: userProfile?.role || "user",
           created_at: user.created_at,
-          email_confirmed_at: user.email_confirmed_at, // Adicionado
-          last_sign_in_at: user.last_sign_in_at,       // Adicionado
+          email_confirmed_at: user.email_confirmed_at,
+          last_sign_in_at: user.last_sign_in_at,
         };
       });
 
@@ -129,153 +87,69 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
-    } else if (req.method === "DELETE") {
-      // Delete a user
-      const { userId } = await req.json();
+    } 
+    
+    if (req.method === "POST") {
+      const { email, first_name, last_name, password, action, userId } = await req.json();
 
-      if (!userId) {
-        return new Response(JSON.stringify({ error: "User ID is required" }), {
+      if (action === "confirm" && userId) {
+        const { error: confirmError } = await supabaseAdminClient.auth.admin.updateUserById(userId, {
+          email_confirm: true
+        });
+        if (confirmError) throw confirmError;
+        return new Response(JSON.stringify({ message: "User confirmed" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+          status: 200,
         });
       }
 
-      const { error: deleteError } = await supabaseAdminClient.auth.admin.deleteUser(userId);
-
-      if (deleteError) {
-        console.error("Edge Function Error: Error deleting user:", deleteError);
-        return new Response(JSON.stringify({ error: deleteError.message }), {
+      if (action === "create") {
+        if (!email || !password) throw new Error("Email and password required");
+        const { data: newUser, error: createError } = await supabaseAdminClient.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { first_name, last_name }
+        });
+        if (createError) throw createError;
+        return new Response(JSON.stringify({ message: "User created", user: newUser.user }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+          status: 200,
         });
       }
 
-      return new Response(JSON.stringify({ message: "User deleted successfully" }), {
+      // Default: Invite
+      const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(email, {
+        data: { first_name, last_name }
+      });
+      if (inviteError) throw inviteError;
+      return new Response(JSON.stringify({ message: "Invitation sent", user: invitedUser.user }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
-    } else if (req.method === "PATCH") { // Novo método PATCH para atualização
-      let requestBody;
-      try {
-        requestBody = await req.json();
-      } catch (jsonError) {
-        console.error("Edge Function Error: Failed to parse PATCH request body as JSON.", jsonError);
-        return new Response(JSON.stringify({ error: `Invalid JSON in request body for PATCH: ${jsonError.message}` }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-      const { userId, password, first_name, last_name, avatar_url, role } = requestBody;
+    }
 
-      if (!userId) {
-        return new Response(JSON.stringify({ error: "User ID is required" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
+    if (req.method === "DELETE") {
+      const { userId } = await req.json();
+      const { error: deleteError } = await supabaseAdminClient.auth.admin.deleteUser(userId);
+      if (deleteError) throw deleteError;
+      return new Response(JSON.stringify({ message: "User deleted" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
-      // Update auth.users table (for password)
+    if (req.method === "PATCH") {
+      const { userId, password, first_name, last_name, avatar_url, role } = await req.json();
       if (password) {
-        const { error: authUpdateError } = await supabaseAdminClient.auth.admin.updateUserById(
-          userId,
-          { password: password }
-        );
-        if (authUpdateError) {
-          console.error("Edge Function Error: Error updating user password:", authUpdateError);
-          return new Response(JSON.stringify({ error: `Failed to update user password: ${authUpdateError.message}` }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          });
-        }
+        await supabaseAdminClient.auth.admin.updateUserById(userId, { password });
       }
-
-      // Update public.profiles table (for first_name, last_name, avatar_url, role)
-      const profileUpdates: { first_name?: string; last_name?: string; avatar_url?: string; role?: string; updated_at: string } = {
-        updated_at: new Date().toISOString(),
-      };
-      if (first_name !== undefined) profileUpdates.first_name = first_name;
-      if (last_name !== undefined) profileUpdates.last_name = last_name;
-      if (avatar_url !== undefined) profileUpdates.avatar_url = avatar_url;
-      if (role !== undefined) profileUpdates.role = role;
-
       const { error: profileUpdateError } = await supabaseAdminClient
         .from("profiles")
-        .update(profileUpdates)
+        .update({ first_name, last_name, avatar_url, role, updated_at: new Date().toISOString() })
         .eq("id", userId);
-
-      if (profileUpdateError) {
-        console.error("Edge Function Error: Error updating user profile:", profileUpdateError);
-        return new Response(JSON.stringify({ error: `Failed to update user profile: ${profileUpdateError.message}` }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        });
-      }
-
-      return new Response(JSON.stringify({ message: "User updated successfully" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } else if (req.method === "POST") { // Novo método POST para convidar usuários ou reenviar convite
-      console.log("Edge Function: Handling POST request for user invitation or resend.");
-      console.log("Content-Type:", req.headers.get("Content-Type"));
-      
-      let requestBody;
-      try {
-        requestBody = await req.json();
-        console.log("Request Body:", requestBody);
-      } catch (jsonError) {
-        console.error("Edge Function Error: Failed to parse request body as JSON.", jsonError);
-        return new Response(JSON.stringify({ error: `Invalid JSON in request body: ${jsonError.message}` }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-
-      const { email, first_name, last_name, action } = requestBody; // Adicionado 'action'
-
-      if (!email) {
-        return new Response(JSON.stringify({ error: "Email is required for invitation" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-
-      // Se a ação for 'resend', passamos apenas o email.
-      // Caso contrário, é um novo convite, e usamos first_name, last_name.
-      const inviteOptions: { data?: { first_name?: string | null; last_name?: string | null } } = {};
-      if (action !== 'resend') {
-        inviteOptions.data = {
-          first_name: first_name || null,
-          last_name: last_name || null,
-        };
-      }
-
-      const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(
-        email,
-        inviteOptions
-      );
-
-      if (inviteError) {
-        console.error("Edge Function Error: Error inviting user:", inviteError.message, inviteError); // Log full error object
-        let statusCode = 500;
-        let errorMessage = `Erro ao enviar convite: ${inviteError.message}`;
-
-        // Verifica por mensagem de erro específica indicando que o usuário já está registrado
-        if (inviteError.message.includes("User already registered")) {
-          statusCode = 409; // Conflito
-          errorMessage = "Erro: Já existe um usuário registrado com este e-mail.";
-        } else if (inviteError.message.includes("Invalid email")) { // Adicionado para e-mail inválido
-          statusCode = 400;
-          errorMessage = "Erro: O formato do e-mail é inválido.";
-        }
-
-        return new Response(JSON.stringify({ error: errorMessage }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: statusCode,
-        });
-      }
-
-      return new Response(JSON.stringify({ message: action === 'resend' ? "Invitation resent successfully" : "Invitation sent successfully", user: invitedUser.user }), {
+      if (profileUpdateError) throw profileUpdateError;
+      return new Response(JSON.stringify({ message: "User updated" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -286,8 +160,7 @@ serve(async (req) => {
       status: 405,
     });
   } catch (error) {
-    console.error("Unhandled error in Edge Function 'admin-actions':", error);
-    return new Response(JSON.stringify({ error: error.message || "An unexpected error occurred." }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
