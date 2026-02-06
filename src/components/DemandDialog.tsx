@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Demand, DemandPriority, DemandStatus, DemandType, SystemType, ChecklistItem, Attachment } from "@/types/demand";
-import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText } from "lucide-react";
+import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns"; // Importar format para formatar datas
+import { format } from "date-fns";
+import { v4 as uuidv4 } from 'uuid';
 
 interface DemandDialogProps {
   demand?: Demand;
@@ -25,7 +26,6 @@ interface DemandDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Definir interface para Tag (igual à usada em TagManagement)
 interface Tag {
   id: string;
   name: string;
@@ -37,7 +37,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Query para buscar o perfil do usuário logado
   const { data: profileData } = useQuery({
     queryKey: ["profiles", user?.id],
     queryFn: async () => {
@@ -63,24 +62,25 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       description: "",
       type: undefined,
       priority: "medium",
-      status: "todo", // Default status
+      status: "todo",
       system: undefined,
       responsible: "",
       checklist: [],
       attachments: [],
       tags: [],
       storyPoints: 0,
-      createdAt: new Date(), // Default for new demands
-      dueDate: undefined, // Default to undefined for new demands
+      createdAt: new Date(),
+      dueDate: undefined,
       creatorName: currentUserName,
-      creatorEmail: user?.email, // Inicializa creatorEmail com o e-mail do usuário logado para novas demandas
+      creatorEmail: user?.email,
     }
   );
 
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [newLink, setNewLink] = useState({ name: "", url: "" });
   const [newTag, setNewTag] = useState("");
-  const [statusError, setStatusError] = useState<string | null>(null); // Novo estado para erro de status
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (demand) {
@@ -99,16 +99,15 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         tags: [],
         storyPoints: 0,
         createdAt: new Date(),
-        dueDate: undefined, // Garante que seja undefined para novas demandas
+        dueDate: undefined,
         creatorName: currentUserName,
-        creatorEmail: user?.email, // Garante que o email do criador seja preenchido para novas demandas
+        creatorEmail: user?.email,
         client_email: user?.email
       });
     }
-    setStatusError(null); // Limpa o erro de status ao abrir/fechar o diálogo
+    setStatusError(null);
   }, [demand, open, currentUserName, user?.email]);
 
-  // Query para buscar tags existentes do Supabase
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
     queryKey: ["tags", user?.id],
     queryFn: async () => {
@@ -123,7 +122,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     enabled: !!user,
   });
 
-  // Mutação para adicionar uma nova tag ao banco de dados
   const addTagToDbMutation = useMutation({
     mutationFn: async (name: string) => {
       if (!user) throw new Error("Usuário não autenticado");
@@ -136,7 +134,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] }); // Invalida o cache de tags para recarregar
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
       toast.success("Nova tag criada no sistema!");
     },
     onError: (err) => {
@@ -144,18 +142,60 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     },
   });
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const filePath = `internal/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('client-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('client-attachments')
+        .getPublicUrl(filePath);
+
+      const newAttachment: Attachment = {
+        id: uuidv4(),
+        name: file.name,
+        type: file.type.startsWith('image/') ? 'image' : 'doc',
+        url: publicUrlData.publicUrl,
+        uploadedAt: new Date(),
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), newAttachment]
+      }));
+      toast.success("Arquivo enviado com sucesso!");
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      toast.error(`Erro ao fazer upload: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
   const handleSave = () => {
     if (!formData.status) {
       setStatusError("O status da demanda é obrigatório.");
       toast.error("Por favor, selecione um status para a demanda.");
       return;
     }
-    // Adiciona validação para creatorEmail se o usuário estiver logado
     if (user && !formData.creatorEmail) {
       toast.error("O e-mail do criador é obrigatório.");
       return;
     }
-    setStatusError(null); // Limpa o erro se a validação passar
+    setStatusError(null);
     onSave(formData);
     onOpenChange(false);
   };
@@ -218,15 +258,12 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   const addTag = async () => {
     const trimmedTag = newTag.trim();
     if (trimmedTag && !formData.tags?.includes(trimmedTag)) {
-      // Verifica se a tag já existe no banco de dados
       const tagExistsInDb = existingTags?.some(tag => tag.name.toLowerCase() === trimmedTag.toLowerCase());
 
       if (!tagExistsInDb) {
-        // Se não existe, cria a tag no banco de dados
         await addTagToDbMutation.mutateAsync(trimmedTag);
       }
       
-      // Adiciona a tag à demanda (seja ela nova ou já existente)
       setFormData({
         ...formData,
         tags: [...(formData.tags || []), trimmedTag],
@@ -242,7 +279,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     });
   };
 
-  // Determina qual e-mail exibir e qual rótulo usar
   const displayEmail = formData.creatorEmail || formData.client_email || "";
   const emailLabel = formData.creatorEmail ? "E-mail do Criador" : (formData.client_email ? "E-mail do Cliente" : "E-mail");
 
@@ -349,7 +385,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   value={formData.status}
                   onValueChange={(value) => {
                     setFormData({ ...formData, status: value as DemandStatus });
-                    setStatusError(null); // Limpa o erro ao selecionar um status
+                    setStatusError(null);
                   }}
                 >
                   <SelectTrigger className={cn(statusError && "border-destructive focus-visible:ring-destructive")}>
@@ -446,7 +482,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   const dateString = e.target.value;
                   if (dateString) {
                     const [year, month, day] = dateString.split('-').map(Number);
-                    // Cria uma nova data no fuso horário local para evitar problemas de UTC
                     const localDate = new Date(year, month - 1, day);
                     setFormData({ ...formData, dueDate: localDate });
                   } else {
@@ -513,58 +548,83 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           </TabsContent>
 
           <TabsContent value="attachments" className="space-y-4 mt-4">
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block">Adicionar Link</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={newLink.name}
-                    onChange={(e) => setNewLink({ ...newLink, name: e.target.value })}
-                    placeholder="Nome do link"
-                    className="flex-1"
-                  />
-                  <Input
-                    value={newLink.url}
-                    onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                    placeholder="URL do link"
-                    className="flex-1"
-                  />
-                  <Button type="button" size="sm" onClick={addLink}>
-                    <Link2 className="h-4 w-4" />
-                  </Button>
+            <div className="space-y-6">
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label>Fazer Upload de Arquivo</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                      className="cursor-pointer"
+                    />
+                    {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Ou adicionar link</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={newLink.name}
+                      onChange={(e) => setNewLink({ ...newLink, name: e.target.value })}
+                      placeholder="Nome do link"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={newLink.url}
+                      onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+                      placeholder="URL do link"
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" onClick={addLink}>
+                      <Link2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Anexos</Label>
-                {formData.attachments?.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center gap-2 p-2 rounded border">
-                    {attachment.type === "link" ? (
-                      <Link2 className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{attachment.name}</p>
-                      {attachment.type === "link" && (
+                <Label>Anexos Adicionados</Label>
+                <div className="grid gap-2">
+                  {formData.attachments?.map((attachment) => (
+                    <div key={attachment.id} className="flex items-center gap-2 p-2 rounded border bg-muted/30">
+                      {attachment.type === "link" ? (
+                        <Link2 className="h-4 w-4 text-muted-foreground" />
+                      ) : attachment.type === "image" ? (
+                        <Upload className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{attachment.name}</p>
                         <a
                           href={attachment.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
+                          className="text-xs text-primary hover:underline truncate block"
                         >
                           {attachment.url}
                         </a>
-                      )}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => removeAttachment(attachment.id)}>
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => removeAttachment(attachment.id)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                {(!formData.attachments || formData.attachments.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum anexo adicionado</p>
-                )}
+                  ))}
+                  {(!formData.attachments || formData.attachments.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhum anexo adicionado</p>
+                  )}
+                </div>
               </div>
             </div>
           </TabsContent>
