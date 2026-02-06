@@ -264,7 +264,7 @@ const ClientDemand = () => {
   const systemOptions: SystemType[] = ["toqweb", "gmax", "toqblend", "t5", "t10", "ecopdv", "toqped", "toqvenda"];
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F18D04] flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Abrir Demanda de Cliente</CardTitle>
