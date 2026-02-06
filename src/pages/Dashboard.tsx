@@ -1,29 +1,32 @@
+import React, { useState, Suspense } from "react";
 import { StatsCard } from "@/components/StatsCard";
 import { DemandCard } from "@/components/DemandCard";
-import { AlertCircle, CheckCircle2, Clock, ListTodo, Plus } from "lucide-react"; // Added Plus icon
+import { AlertCircle, CheckCircle2, Clock, ListTodo, Plus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button"; // Added Button
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { Demand } from "@/types/demand";
-import { Link } from "react-router-dom"; // Added Link
+import { toast } from "sonner";
+
+// Lazy load DemandDialog
+const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
 const Dashboard = () => {
   const { user, userRole } = useAuth();
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchDemands = async () => {
     if (!user) return [];
 
     let query = supabase.from("demands").select("*");
 
-    // Se o papel for 'user', filtra apenas as demandas criadas por ele
     if (userRole === "user") {
       query = query.eq("user_id", user.id);
     }
-    // Para 'technician' e 'admin', nenhuma filtragem adicional é necessária,
-    // pois as políticas RLS já permitem que vejam todas as demandas.
 
     const { data, error } = await query;
     if (error) throw error;
@@ -40,10 +43,50 @@ const Dashboard = () => {
   };
 
   const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id, userRole], // Adicionado userRole ao queryKey
+    queryKey: ["demands", user?.id, userRole],
     queryFn: fetchDemands,
     enabled: !!user,
   });
+
+  const addDemandMutation = useMutation({
+    mutationFn: async (newDemandData: Partial<Demand>) => {
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = newDemandData;
+
+      const { data, error } = await supabase
+        .from("demands")
+        .insert({
+          ...rest,
+          user_id: user.id,
+          created_at: (createdAt || new Date()).toISOString(),
+          updated_at: (updatedAt || new Date()).toISOString(),
+          due_date: dueDate ? dueDate.toISOString() : null,
+          completed_at: completedAt ? completedAt.toISOString() : null,
+          story_points: storyPoints,
+          creator_name: creatorName,
+          creator_email: creatorEmail,
+          client_email: creatorEmail,
+          client_name: creatorName,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+      toast.success("Demanda criada com sucesso!");
+      setIsDialogOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao criar demanda: ${err.message}`);
+    },
+  });
+
+  const handleSaveDemand = (demandData: Partial<Demand>) => {
+    addDemandMutation.mutate(demandData);
+  };
 
   if (isLoading) {
     return (
@@ -66,7 +109,6 @@ const Dashboard = () => {
   const inProgress = demands?.filter(d => d.status === "in-progress").length || 0;
   const completed = demands?.filter(d => d.status === "done").length || 0;
 
-  // Data for charts
   const typeData = [
     { name: "Novo Recurso", value: demands?.filter(d => d.type === "feature").length || 0, color: "hsl(var(--primary))" },
     { name: "Bug", value: demands?.filter(d => d.type === "bug").length || 0, color: "hsl(var(--destructive))" },
@@ -98,12 +140,19 @@ const Dashboard = () => {
               Visão geral das demandas de desenvolvimento e suporte
             </p>
           </div>
-          <Link to="/client-demand">
-            <Button size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Abrir Demanda
-            </Button>
-          </Link>
+          <Suspense fallback={<Button size="lg" disabled>Carregando...</Button>}>
+            <DemandDialog
+              onSave={handleSaveDemand}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              trigger={
+                <Button size="lg" className="gap-2" onClick={() => setIsDialogOpen(true)}>
+                  <Plus className="h-5 w-5" />
+                  Abrir Demanda
+                </Button>
+              }
+            />
+          </Suspense>
         </div>
 
         {/* Stats Cards */}
