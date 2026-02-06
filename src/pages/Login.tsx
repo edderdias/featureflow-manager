@@ -67,9 +67,9 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="flex w-full max-w-6xl rounded-lg shadow-lg overflow-hidden bg-card">
         {/* Left side: Login Form */}
-        <div className="w-full md:w-[30%] p-8 space-y-6 flex flex-col justify-center"> {/* Revertido para md:w-[30%] */}
+        <div className="w-full md:w-[30%] p-8 space-y-6 flex flex-col justify-center bg-[#F18D04]">
           <img src="/logo.png" alt="ToqDesk Logo" className="h-32 w-32 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-center text-foreground">Bem-vindo ao ToqDesk</h2>
+          <h2 className="text-2xl font-bold text-center text-white">Bem-vindo ao ToqDesk</h2>
           <Auth
             supabaseClient={supabase}
             providers={[]}
@@ -90,7 +90,7 @@ const Login = () => {
           />
           <div className="text-center mt-4">
             <Link to="/client-demand">
-              <Button variant="outline" className="w-full">
+              <Button variant="secondary" className="w-full bg-white text-[#F18D04] hover:bg-gray-100 border-none">
                 Abrir Demanda de Cliente
               </Button>
             </Link>
@@ -98,7 +98,7 @@ const Login = () => {
         </div>
 
         {/* Right side: Image */}
-        <div className="hidden md:flex md:w-[70%] bg-primary/10 items-center justify-center p-0"> {/* Revertido para md:w-[70%] */}
+        <div className="hidden md:flex md:w-[70%] bg-primary/10 items-center justify-center p-0">
           <img src="/toqdesk.png" alt="ToqDesk Illustration" className="w-full h-full object-cover" />
         </div>
       </div>
