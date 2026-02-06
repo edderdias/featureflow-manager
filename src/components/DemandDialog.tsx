@@ -383,6 +383,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                     <SelectItem value="ecopdv">ECOPDV</SelectItem>
                     <SelectItem value="toqped">TOQPED</SelectItem>
                     <SelectItem value="toqvenda">TOQVENDA</SelectItem>
+                    <SelectItem value="api">API</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
