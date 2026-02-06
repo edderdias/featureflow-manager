@@ -78,8 +78,13 @@ const Login = () => {
               variables: {
                 default: {
                   colors: {
-                    brand: "hsl(var(--primary))",
-                    brandAccent: "hsl(var(--primary-foreground))",
+                    brand: "#000000",
+                    brandAccent: "#333333",
+                    inputBackground: 'white',
+                    inputText: 'black',
+                    inputLabelText: 'white',
+                    inputPlaceholder: '#666666',
+                    anchorTextColor: 'white',
                   },
                 },
               },
