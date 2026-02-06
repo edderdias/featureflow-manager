@@ -78,8 +78,9 @@ const Login = () => {
               variables: {
                 default: {
                   colors: {
-                    brand: "#000000",
-                    brandAccent: "#333333",
+                    brand: "white",
+                    brandAccent: "#f3f4f6",
+                    brandButtonText: "#F18D04",
                     inputBackground: 'white',
                     inputText: 'black',
                     inputLabelText: 'white',
