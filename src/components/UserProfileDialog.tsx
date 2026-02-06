@@ -19,6 +19,8 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -29,19 +31,16 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
           .eq("id", user.id)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 é o código de erro para "No rows found" com .single()
+        if (error && error.code !== 'PGRST116') {
           console.error("Error fetching user profile:", error);
           toast.error("Erro ao carregar seu perfil.");
         } else if (data) {
           setFirstName(data.first_name || "");
           setLastName(data.last_name || "");
           setAvatarUrl(data.avatar_url || "");
-        } else {
-          // Se nenhum perfil for encontrado (data é null), inicializa com valores vazios
-          setFirstName("");
-          setLastName("");
-          setAvatarUrl("");
         }
+        setNewPassword("");
+        setConfirmPassword("");
       }
     };
     fetchProfile();
@@ -50,20 +49,44 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Usuário não autenticado.");
-      const { error } = await supabase
+
+      // 1. Atualizar dados do perfil na tabela public.profiles
+      const { error: profileError } = await supabase
         .from("profiles")
-        .update({ first_name: firstName, last_name: lastName, avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+        .update({ 
+          first_name: firstName, 
+          last_name: lastName, 
+          avatar_url: avatarUrl, 
+          updated_at: new Date().toISOString() 
+        })
         .eq("id", user.id);
-      if (error) throw error;
+      
+      if (profileError) throw profileError;
+
+      // 2. Se houver uma nova senha, atualizar no Auth
+      if (newPassword) {
+        if (newPassword !== confirmPassword) {
+          throw new Error("As senhas não coincidem.");
+        }
+        if (newPassword.length < 6) {
+          throw new Error("A senha deve ter pelo menos 6 caracteres.");
+        }
+        
+        const { error: authError } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+        
+        if (authError) throw authError;
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profiles", user?.id] }); // Invalida o cache do perfil
-      queryClient.invalidateQueries({ queryKey: ["users"] }); // Invalida o cache de usuários para atualizar a lista de gerenciamento
-      toast.success("Perfil atualizado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["profiles", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast.success("Perfil e senha atualizados com sucesso!");
       onOpenChange(false);
     },
-    onError: (err) => {
-      toast.error(`Erro ao atualizar perfil: ${err.message}`);
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar: ${err.message}`);
     },
   });
 
@@ -86,12 +109,12 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
               id="email"
               value={user?.email || ""}
               readOnly
-              className="col-span-3"
+              className="col-span-3 bg-muted"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="first_name" className="text-right">
-              Primeiro Nome
+              Nome
             </Label>
             <Input
               id="first_name"
@@ -113,7 +136,7 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="avatar_url" className="text-right">
-              URL do Avatar
+              Avatar URL
             </Label>
             <Input
               id="avatar_url"
@@ -122,17 +145,36 @@ export const UserProfileDialog = ({ open, onOpenChange }: UserProfileDialogProps
               className="col-span-3"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="role" className="text-right">
-              Papel
-            </Label>
-            <Input
-              id="role"
-              value={userRole || "user"}
-              readOnly
-              className="col-span-3"
-              disabled={true}
-            />
+          
+          <div className="border-t my-2 pt-4">
+            <p className="text-sm font-medium mb-4">Alterar Senha (opcional)</p>
+            <div className="grid gap-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new_password" className="text-right">
+                  Nova Senha
+                </Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="confirm_password" className="text-right">
+                  Confirmar
+                </Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
