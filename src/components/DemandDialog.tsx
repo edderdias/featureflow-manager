@@ -150,7 +150,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = `internal/${fileName}`;
+      const filePath = `public/${fileName}`; // Alterado de 'internal/' para 'public/' para seguir o padrão que já funciona
 
       const { error: uploadError } = await supabase.storage
         .from('client-attachments')
