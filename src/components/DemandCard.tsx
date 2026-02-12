@@ -23,86 +23,75 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
   const isOverdue = daysUntilDue !== null && daysUntilDue <= 0 && demand.status !== "done";
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300">
+    <Card className="hover:shadow-md transition-all duration-300 flex flex-col h-full">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-lg leading-tight">{demand.title}</CardTitle>
-          <div className="flex flex-col items-end gap-1">
-            <Badge variant={getPriorityColor(demand.priority) as any}>
+          <CardTitle className="text-lg leading-tight line-clamp-2 break-words flex-1">
+            {demand.title}
+          </CardTitle>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge variant={getPriorityColor(demand.priority) as any} className="whitespace-nowrap">
               {priorityLabels[demand.priority]}
             </Badge>
             {isOverdue && (
-              <Badge variant="destructive" className="flex items-center gap-1">
+              <Badge variant="destructive" className="flex items-center gap-1 whitespace-nowrap text-[10px]">
                 <AlertTriangle className="h-3 w-3" />
-                Prazo Vencido!
-              </Badge>
-            )}
-            {isDueSoon && (
-              <Badge variant="warning" className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Vence amanhã!
+                Vencido
               </Badge>
             )}
           </div>
         </div>
-        <div className="flex gap-2 pt-2">
-          <Badge variant={getTypeColor(demand.type) as any}>
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          <Badge variant={getTypeColor(demand.type) as any} className="text-[10px]">
             {typeLabels[demand.type]}
           </Badge>
-          <Badge variant={getStatusColor(demand.status) as any}>
+          <Badge variant={getStatusColor(demand.status) as any} className="text-[10px]">
             {statusLabels[demand.status]}
           </Badge>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground line-clamp-2">{demand.description}</p>
+      <CardContent className="space-y-3 flex-1">
+        <p className="text-sm text-muted-foreground line-clamp-3 break-words">
+          {demand.description}
+        </p>
         
-        <div className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-1.5 text-xs">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Wrench className="h-4 w-4" />
-            <span className="font-medium">{demand.system.toUpperCase()}</span>
+            <Wrench className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-medium truncate">{(demand.system || "N/A").toUpperCase()}</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>{demand.responsible}</span>
+            <User className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{demand.responsible}</span>
           </div>
-          {/* Sempre exibe a data de criação */}
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Criado em: {format(demand.createdAt, "dd/MM/yyyy", { locale: ptBR })}</span>
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Criado: {format(demand.createdAt, "dd/MM/yy", { locale: ptBR })}</span>
           </div>
-          {/* Exibe a data de vencimento se existir */}
           {demand.dueDate && (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>Vencimento: {format(demand.dueDate, "dd/MM/yyyy", { locale: ptBR })}</span>
-            </div>
-          )}
-          {/* Exibe a data de conclusão se a demanda estiver concluída */}
-          {demand.status === "done" && demand.completedAt && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Concluído em: {format(demand.completedAt, "dd/MM/yyyy", { locale: ptBR })}</span>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Prazo: {format(demand.dueDate, "dd/MM/yy", { locale: ptBR })}</span>
             </div>
           )}
         </div>
       </CardContent>
       
-      <CardFooter className="flex flex-wrap gap-2 pt-3">
+      <CardFooter className="flex flex-wrap gap-2 pt-3 mt-auto">
         {onEdit && (
-          <Button variant="outline" size="sm" onClick={() => onEdit(demand)} className="flex-1 min-w-[100px]">
+          <Button variant="outline" size="sm" onClick={() => onEdit(demand)} className="flex-1 h-8 text-xs">
             Editar
           </Button>
         )}
         {onDelete && userRole === "admin" && (
-          <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1 min-w-[100px]">
+          <Button variant="destructive" size="sm" onClick={() => onDelete(demand.id)} className="flex-1 h-8 text-xs">
             Excluir
           </Button>
         )}
         {onComplete && demand.status !== "done" && (
-          <Button variant="success" size="sm" onClick={() => onComplete(demand.id)} className="flex-1 min-w-[100px]">
-            <CheckCircle2 className="h-4 w-4 mr-2" /> Concluir
+          <Button variant="success" size="sm" onClick={() => onComplete(demand.id)} className="flex-1 h-8 text-xs">
+            Concluir
           </Button>
         )}
       </CardFooter>

@@ -30,45 +30,45 @@ const StackCard = ({ demand, onEdit }: { demand: Demand; onEdit: (d: Demand) => 
   return (
     <Card
       onDoubleClick={() => onEdit(demand)}
-      className="hover:shadow-lg transition-all duration-300 group mb-3 cursor-pointer"
+      className="hover:shadow-lg transition-all duration-300 group mb-3 cursor-pointer overflow-hidden"
     >
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base leading-tight group-hover:text-primary transition-colors">
+      <CardHeader className="p-3 pb-2">
+        <CardTitle className="text-sm font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2 break-words">
           {demand.title}
         </CardTitle>
-        <div className="flex gap-2 pt-2">
-          <Badge variant={getPriorityColor(demand.priority) as any} className="text-xs">
+        <div className="flex flex-wrap gap-1 pt-1">
+          <Badge variant={getPriorityColor(demand.priority) as any} className="text-[9px] h-4 px-1">
             {priorityLabels[demand.priority]}
           </Badge>
-          <Badge variant={getTypeColor(demand.type) as any} className="text-xs">
+          <Badge variant={getTypeColor(demand.type) as any} className="text-[9px] h-4 px-1">
             {typeLabels[demand.type]}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground line-clamp-2">{demand.description}</p>
+      <CardContent className="p-3 pt-0 space-y-2">
+        <p className="text-xs text-muted-foreground line-clamp-2 break-words">{demand.description}</p>
         {demand.checklist && demand.checklist.length > 0 && (
           <div className="space-y-1">
             <Progress value={checklistProgress} className="h-1" />
           </div>
         )}
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <User className="h-3 w-3" />
-            <span>{demand.responsible}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1 truncate max-w-[100px]">
+            <User className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{demand.responsible}</span>
           </div>
           {demand.dueDate && (
             <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
+              <Calendar className="h-2.5 w-2.5 shrink-0" />
               <span>{format(demand.dueDate, "dd/MM", { locale: ptBR })}</span>
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between pt-1">
-          <Badge variant="outline" className="text-xs font-mono">
+        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+          <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">
             {(demand.system || "N/A").toUpperCase()}
           </Badge>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-[9px] h-4 px-1">
             {(demand.stack || "none").toUpperCase()}
           </Badge>
         </div>
@@ -79,20 +79,20 @@ const StackCard = ({ demand, onEdit }: { demand: Demand; onEdit: (d: Demand) => 
 
 const StackColumn = ({ title, demands, onEdit }: StackColumnProps) => {
   return (
-    <div className="flex flex-col bg-muted/30 p-4 rounded-lg shadow-sm min-h-[200px]">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold mb-1">{title}</h2>
-        <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col bg-muted/30 p-3 rounded-lg shadow-sm min-h-[200px] w-full">
+      <div className="mb-3">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        <p className="text-[10px] text-muted-foreground">
           {demands.length} {demands.length === 1 ? "demanda" : "demandas"}
         </p>
       </div>
-      <div className="space-y-3 flex-1">
+      <div className="space-y-2 flex-1">
         {demands.map((demand) => (
           <StackCard key={demand.id} demand={demand} onEdit={onEdit} />
         ))}
         {demands.length === 0 && (
-          <div className="flex items-center justify-center h-32 border-2 border-dashed rounded-lg border-border text-muted-foreground text-sm">
-            Nenhuma demanda
+          <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg border-border/50 text-muted-foreground text-[10px] text-center p-4">
+            Vazio
           </div>
         )}
       </div>
@@ -177,7 +177,7 @@ const StackBoard = () => {
       setEditingDemand(undefined);
     },
     onError: (err: any) => {
-      toast.error(`Erro ao atualizar demanda: ${err.message}`);
+      toast.error(`Erro ao atualizar: ${err.message}`);
     },
   });
 
@@ -206,7 +206,7 @@ const StackBoard = () => {
           <p className="text-muted-foreground">Visualização organizada por tecnologia e fluxo</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StackColumn title="Splint" demands={splintDemands} onEdit={handleEdit} />
           <StackColumn title="BackEnd" demands={backendDemands} onEdit={handleEdit} />
           <StackColumn title="FrontEnd" demands={frontendDemands} onEdit={handleEdit} />
