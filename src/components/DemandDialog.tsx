@@ -56,26 +56,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     ? `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim()
     : user?.email || "Usuário Desconhecido";
 
-  const [formData, setFormData] = useState<Partial<Demand>>(
-    demand || {
-      title: "",
-      description: "",
-      type: undefined,
-      priority: "medium",
-      status: "todo",
-      system: undefined,
-      stack: "none",
-      responsible: "",
-      checklist: [],
-      attachments: [],
-      tags: [],
-      storyPoints: 0,
-      createdAt: new Date(),
-      dueDate: undefined,
-      creatorName: currentUserName,
-      creatorEmail: user?.email,
-    }
-  );
+  const [formData, setFormData] = useState<Partial<Demand>>({});
 
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [newLink, setNewLink] = useState({ name: "", url: "" });
@@ -84,30 +65,35 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    if (demand) {
-      setFormData(demand);
-    } else {
-      setFormData({
-        title: "",
-        description: "",
-        type: undefined,
-        priority: "medium",
-        status: "todo",
-        system: undefined,
-        stack: "none",
-        responsible: "",
-        checklist: [],
-        attachments: [],
-        tags: [],
-        storyPoints: 0,
-        createdAt: new Date(),
-        dueDate: undefined,
-        creatorName: currentUserName,
-        creatorEmail: user?.email,
-        client_email: user?.email
-      });
+    if (open) {
+      if (demand) {
+        setFormData({
+          ...demand,
+          creatorEmail: demand.creatorEmail || demand.client_email || user?.email,
+          creatorName: demand.creatorName || demand.client_name || currentUserName,
+        });
+      } else {
+        setFormData({
+          title: "",
+          description: "",
+          type: "feature",
+          priority: "medium",
+          status: "todo",
+          system: "toqweb",
+          stack: "none",
+          responsible: currentUserName,
+          checklist: [],
+          attachments: [],
+          tags: [],
+          storyPoints: 0,
+          createdAt: new Date(),
+          dueDate: undefined,
+          creatorName: currentUserName,
+          creatorEmail: user?.email,
+        });
+      }
+      setStatusError(null);
     }
-    setStatusError(null);
   }, [demand, open, currentUserName, user?.email]);
 
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
@@ -187,17 +173,28 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
   };
 
   const handleSave = () => {
+    if (!formData.title) {
+      toast.error("O título da demanda é obrigatório.");
+      return;
+    }
     if (!formData.status) {
       setStatusError("O status da demanda é obrigatório.");
       toast.error("Por favor, selecione um status para a demanda.");
       return;
     }
-    if (user && !formData.creatorEmail) {
-      toast.error("O e-mail do criador é obrigatório.");
+    
+    const email = formData.creatorEmail || formData.client_email || user?.email;
+    if (!email) {
+      toast.error("O e-mail é obrigatório para salvar a demanda.");
       return;
     }
+
     setStatusError(null);
-    onSave(formData);
+    onSave({
+      ...formData,
+      creatorEmail: email,
+      client_email: formData.client_email || email
+    });
     onOpenChange(false);
   };
 
@@ -280,8 +277,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     });
   };
 
-  const displayEmail = formData.creatorEmail || formData.client_email || "";
-  const emailLabel = formData.creatorEmail ? "E-mail do Criador" : (formData.client_email ? "E-mail do Cliente" : "E-mail");
+  const displayEmail = formData.creatorEmail || formData.client_email || user?.email || "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -301,32 +297,33 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="creatorName">Criado por</Label>
-              <Input
-                id="creatorName"
-                value={formData.creatorName || ""}
-                onChange={(e) => setFormData({ ...formData, creatorName: e.target.value })}
-                placeholder="Nome do criador"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="creatorEmail">{emailLabel}</Label>
-              <Input
-                id="creatorEmail"
-                value={displayEmail}
-                readOnly
-                className="bg-muted/50 cursor-not-allowed"
-                placeholder="E-mail do criador ou cliente"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="creatorName">Criado por</Label>
+                <Input
+                  id="creatorName"
+                  value={formData.creatorName || ""}
+                  onChange={(e) => setFormData({ ...formData, creatorName: e.target.value })}
+                  placeholder="Nome do criador"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="creatorEmail">E-mail</Label>
+                <Input
+                  id="creatorEmail"
+                  value={displayEmail}
+                  readOnly
+                  className="bg-muted/50 cursor-not-allowed"
+                  placeholder="E-mail do criador"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
               <Input
                 id="title"
-                value={formData.title}
+                value={formData.title || ""}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Ex: Implementar login com Google"
               />
@@ -336,7 +333,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               <Label htmlFor="description">Descrição</Label>
               <Textarea
                 id="description"
-                value={formData.description}
+                value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Descreva os detalhes da demanda..."
                 rows={4}
@@ -431,7 +428,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                 <Label htmlFor="responsible">Responsável *</Label>
                 <Input
                   id="responsible"
-                  value={formData.responsible}
+                  value={formData.responsible || ""}
                   onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
                   placeholder="Nome do responsável"
                 />
@@ -462,19 +459,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="createdAt">Data de Criação</Label>
-                <Input
-                  id="createdAt"
-                  type="date"
-                  value={formData.createdAt ? format(formData.createdAt, "yyyy-MM-dd") : ""}
-                  readOnly
-                  className="bg-muted/50 cursor-not-allowed"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
                 <Label htmlFor="dueDate">Data de Vencimento</Label>
                 <Input
                   id="dueDate"
@@ -492,7 +476,9 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                   }}
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="stack">Stack *</Label>
                 <Select
@@ -509,6 +495,16 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
                     <SelectItem value="apps">Apps</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="createdAt">Data de Criação</Label>
+                <Input
+                  id="createdAt"
+                  type="date"
+                  value={formData.createdAt ? format(formData.createdAt, "yyyy-MM-dd") : ""}
+                  readOnly
+                  className="bg-muted/50 cursor-not-allowed"
+                />
               </div>
             </div>
 

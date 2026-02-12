@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from "react"; // Adicionado Suspense e React
+import React, { useState, Suspense } from "react";
 import { DemandStatus, Demand } from "@/types/demand";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-// Removido import direto do DemandDialog
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +34,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Lazy load DemandDialog
 const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
 interface DraggableDemandCardProps {
@@ -130,7 +128,7 @@ const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
         </div>
         <div className="flex items-center justify-between pt-1">
           <Badge variant="outline" className="text-xs font-mono">
-            {demand.system.toUpperCase()}
+            {(demand.system || "N/A").toUpperCase()}
           </Badge>
           {demand.attachments && demand.attachments.length > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -240,30 +238,32 @@ const KanbanBoard = () => {
   const updateDemandMutation = useMutation({
     mutationFn: async (updatedDemandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
-      if (!updatedDemandData.id) throw new Error("Demand ID is required for update.");
-      if (!updatedDemandData.status) throw new Error("Demand status cannot be empty.");
+      if (!updatedDemandData.id) throw new Error("ID da demanda é obrigatório.");
+
       const payload = {
-        title: updatedDemandData.title ?? null,
-        description: updatedDemandData.description ?? null,
-        type: updatedDemandData.type ?? null,
-        priority: updatedDemandData.priority ?? null,
+        title: updatedDemandData.title,
+        description: updatedDemandData.description,
+        type: updatedDemandData.type,
+        priority: updatedDemandData.priority,
         status: updatedDemandData.status,
-        system: updatedDemandData.system ?? null,
-        responsible: updatedDemandData.responsible ?? null,
+        system: updatedDemandData.system,
+        stack: updatedDemandData.stack,
+        responsible: updatedDemandData.responsible,
         due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
         completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
-        story_points: updatedDemandData.storyPoints ?? null,
-        sprint: updatedDemandData.sprint ?? null,
-        checklist: updatedDemandData.checklist ?? [],
-        attachments: updatedDemandData.attachments ?? [],
-        tags: updatedDemandData.tags ?? [],
-        client_cnpj: updatedDemandData.client_cnpj ?? null,
-        client_email: updatedDemandData.client_email ?? null,
-        client_name: updatedDemandData.client_name ?? null,
-        creator_name: updatedDemandData.creatorName ?? null,
-        creator_email: updatedDemandData.creatorEmail ?? null,
+        story_points: updatedDemandData.storyPoints,
+        sprint: updatedDemandData.sprint,
+        checklist: updatedDemandData.checklist,
+        attachments: updatedDemandData.attachments,
+        tags: updatedDemandData.tags,
+        client_cnpj: updatedDemandData.client_cnpj,
+        client_email: updatedDemandData.client_email,
+        client_name: updatedDemandData.client_name,
+        creator_name: updatedDemandData.creatorName,
+        creator_email: updatedDemandData.creatorEmail,
         updated_at: new Date().toISOString(),
       };
+
       const { data, error } = await supabase
         .from("demands")
         .update(payload)
@@ -279,7 +279,7 @@ const KanbanBoard = () => {
       setIsDialogOpen(false);
       setEditingDemand(undefined);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(`Erro ao atualizar demanda: ${err.message}`);
     },
   });
@@ -331,12 +331,6 @@ const KanbanBoard = () => {
     }
     const draggedDemand = demands?.find(d => d.id === draggedDemandId);
     if (draggedDemand && draggedDemand.status !== newStatus) {
-      queryClient.setQueryData(["demands", user?.id, userRole], (oldDemands: Demand[] | undefined) => {
-        if (!oldDemands) return [];
-        return oldDemands.map(d =>
-          d.id === draggedDemandId ? { ...d, status: newStatus } : d
-        );
-      });
       const updatedDemand: Partial<Demand> = {
         ...draggedDemand,
         status: newStatus,

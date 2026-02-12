@@ -120,6 +120,9 @@ const StackBoard = () => {
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
       completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
+      storyPoints: d.story_points,
+      creatorName: d.creator_name,
+      creatorEmail: d.creator_email,
     })) as Demand[];
   };
 
@@ -130,11 +133,38 @@ const StackBoard = () => {
   });
 
   const updateDemandMutation = useMutation({
-    mutationFn: async (updatedData: Partial<Demand>) => {
+    mutationFn: async (updatedDemandData: Partial<Demand>) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      if (!updatedDemandData.id) throw new Error("ID da demanda é obrigatório.");
+
+      const payload = {
+        title: updatedDemandData.title,
+        description: updatedDemandData.description,
+        type: updatedDemandData.type,
+        priority: updatedDemandData.priority,
+        status: updatedDemandData.status,
+        system: updatedDemandData.system,
+        stack: updatedDemandData.stack,
+        responsible: updatedDemandData.responsible,
+        due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
+        completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
+        story_points: updatedDemandData.storyPoints,
+        sprint: updatedDemandData.sprint,
+        checklist: updatedDemandData.checklist,
+        attachments: updatedDemandData.attachments,
+        tags: updatedDemandData.tags,
+        client_cnpj: updatedDemandData.client_cnpj,
+        client_email: updatedDemandData.client_email,
+        client_name: updatedDemandData.client_name,
+        creator_name: updatedDemandData.creatorName,
+        creator_email: updatedDemandData.creatorEmail,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from("demands")
-        .update({ ...updatedData, updated_at: new Date().toISOString() })
-        .eq("id", updatedData.id)
+        .update(payload)
+        .eq("id", updatedDemandData.id)
         .select()
         .single();
       if (error) throw error;
@@ -144,12 +174,20 @@ const StackBoard = () => {
       queryClient.invalidateQueries({ queryKey: ["demands"] });
       toast.success("Demanda atualizada!");
       setIsDialogOpen(false);
+      setEditingDemand(undefined);
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar demanda: ${err.message}`);
     },
   });
 
   const handleEdit = (demand: Demand) => {
     setEditingDemand(demand);
     setIsDialogOpen(true);
+  };
+
+  const handleSaveDemand = (demandData: Partial<Demand>) => {
+    updateDemandMutation.mutate(demandData);
   };
 
   if (isLoading) return <div className="p-8 text-center">Carregando...</div>;
@@ -180,7 +218,7 @@ const StackBoard = () => {
           <Suspense fallback={null}>
             <DemandDialog
               demand={editingDemand}
-              onSave={(data) => updateDemandMutation.mutate({ ...data, id: editingDemand.id })}
+              onSave={handleSaveDemand}
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
             />
