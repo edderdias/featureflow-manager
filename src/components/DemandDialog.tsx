@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Demand, DemandPriority, DemandStatus, DemandType, SystemType, ChecklistItem, Attachment } from "@/types/demand";
+import { Demand, DemandPriority, DemandStatus, DemandType, SystemType, ChecklistItem, Attachment, StackType } from "@/types/demand";
 import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -64,6 +64,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       priority: "medium",
       status: "todo",
       system: undefined,
+      stack: "none",
       responsible: "",
       checklist: [],
       attachments: [],
@@ -93,6 +94,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         priority: "medium",
         status: "todo",
         system: undefined,
+        stack: "none",
         responsible: "",
         checklist: [],
         attachments: [],
@@ -150,7 +152,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     try {
       const fileExtension = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = `public/${fileName}`; // Alterado de 'internal/' para 'public/' para seguir o padrão que já funciona
+      const filePath = `public/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('client-attachments')
@@ -180,7 +182,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       toast.error(`Erro ao fazer upload: ${error.message}`);
     } finally {
       setIsUploading(false);
-      // Reset input
       event.target.value = '';
     }
   };
@@ -472,23 +473,43 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Data de Vencimento</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : ""}
-                onChange={(e) => {
-                  const dateString = e.target.value;
-                  if (dateString) {
-                    const [year, month, day] = dateString.split('-').map(Number);
-                    const localDate = new Date(year, month - 1, day);
-                    setFormData({ ...formData, dueDate: localDate });
-                  } else {
-                    setFormData({ ...formData, dueDate: undefined });
-                  }
-                }}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Data de Vencimento</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={formData.dueDate ? format(formData.dueDate, "yyyy-MM-dd") : ""}
+                  onChange={(e) => {
+                    const dateString = e.target.value;
+                    if (dateString) {
+                      const [year, month, day] = dateString.split('-').map(Number);
+                      const localDate = new Date(year, month - 1, day);
+                      setFormData({ ...formData, dueDate: localDate });
+                    } else {
+                      setFormData({ ...formData, dueDate: undefined });
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="stack">Stack *</Label>
+                <Select
+                  value={formData.stack}
+                  onValueChange={(value) => setFormData({ ...formData, stack: value as StackType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a stack" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem Stack</SelectItem>
+                    <SelectItem value="backend">BackEnd</SelectItem>
+                    <SelectItem value="frontend">FrontEnd</SelectItem>
+                    <SelectItem value="apps">Apps</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

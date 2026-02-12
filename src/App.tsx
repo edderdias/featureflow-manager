@@ -8,18 +8,17 @@ import TechnicianProtectedRoute from "./components/TechnicianProtectedRoute";
 
 const queryClient = new QueryClient();
 
-// Lazy load page components
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const DemandList = React.lazy(() => import("./pages/DemandList"));
 const KanbanBoard = React.lazy(() => import("./pages/KanbanBoard"));
+const StackBoard = React.lazy(() => import("./pages/StackBoard"));
 const Reports = React.lazy(() => import("./pages/Reports"));
 const TagManagement = React.lazy(() => import("./pages/TagManagement"));
 const UserManagement = React.lazy(() => import("./pages/UserManagement"));
-const Login = React.lazy(() => import("./pages/Login")); // Alterado para lazy load
+const Login = React.lazy(() => import("./pages/Login"));
 const ClientDemand = React.lazy(() => import("./pages/ClientDemand"));
 const ConfirmInvite = React.lazy(() => import("./pages/ConfirmInvite"));
 
-// Lazy load GlobalProviders e Navigation
 const LazyGlobalProviders = React.lazy(() => import("./components/GlobalProviders"));
 const Navigation = React.lazy(() => import("./components/Navigation").then(m => ({ default: m.Navigation })));
 
@@ -88,6 +87,14 @@ const AppRoutes = () => {
             element={
               <ProtectedRoute>
                 <KanbanBoard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stacks"
+            element={
+              <ProtectedRoute>
+                <StackBoard />
               </ProtectedRoute>
             }
           />

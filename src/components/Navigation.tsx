@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Settings } from "lucide-react";
+import { LayoutDashboard, ListTodo, LayoutGrid, BarChart3, Tags, Users, Layers } from "lucide-react";
 import { useAuth } from "@/integrations/supabase/auth";
-import { UserNav } from "./UserNav"; // Importar UserNav
+import { UserNav } from "./UserNav";
 
 const navItems = [
   {
@@ -24,22 +24,28 @@ const navItems = [
     roles: ["user", "technician", "admin"],
   },
   {
+    title: "Lista por Stacks",
+    href: "/stacks",
+    icon: Layers,
+    roles: ["user", "technician", "admin"],
+  },
+  {
     title: "Relatórios",
     href: "/reports",
     icon: BarChart3,
-    roles: ["technician", "admin"], // Apenas técnicos e administradores
+    roles: ["technician", "admin"],
   },
   {
     title: "Gerenciar Tags",
     href: "/tags",
     icon: Tags,
-    roles: ["technician", "admin"], // Apenas técnicos e administradores
+    roles: ["technician", "admin"],
   },
   {
     title: "Gerenciar Usuários",
     href: "/users",
     icon: Users,
-    roles: ["admin"], // Apenas administradores
+    roles: ["admin"],
   },
 ];
 
@@ -56,13 +62,12 @@ export const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="ToqDesk Logo" className="h-10 w-10" /> {/* Aumentado de h-8 w-8 para h-10 w-10 */}
+            <img src="/logo.png" alt="ToqDesk Logo" className="h-10 w-10" />
             <span className="text-xl font-bold">ToqDesk</span>
           </div>
           
           <div className="flex items-center gap-1">
             {navItems.map((item) => {
-              // Renderiza o item apenas se o papel do usuário estiver incluído nos papéis permitidos
               if (userRole && item.roles.includes(userRole)) {
                 const isActive = location.pathname === item.href;
                 return (

@@ -1,7 +1,8 @@
 export type DemandType = "feature" | "bug" | "repair";
 export type DemandPriority = "low" | "medium" | "high";
 export type DemandStatus = "todo" | "in-progress" | "testing" | "done";
-export type SystemType = "toqweb" | "gmax" | "toqblend" | "t5" | "t10" | "ecopdv" | "toqped" | "toqvenda";
+export type SystemType = "toqweb" | "gmax" | "toqblend" | "t5" | "t10" | "ecopdv" | "toqped" | "toqvenda" | "api";
+export type StackType = "none" | "backend" | "frontend" | "apps";
 
 export interface ChecklistItem {
   id: string;
@@ -27,27 +28,28 @@ export interface TimelineEvent {
 
 export interface Demand {
   id: string;
-  user_id?: string; // Made nullable
+  user_id?: string;
   title: string;
   description: string;
   type: DemandType;
   priority: DemandPriority;
   status: DemandStatus;
   system: SystemType;
+  stack: StackType;
   responsible: string;
   createdAt: Date;
   updatedAt: Date;
   dueDate?: Date;
-  completedAt?: Date; // Novo campo para a data de conclusão
+  completedAt?: Date;
   storyPoints?: number;
   sprint?: string;
   checklist?: ChecklistItem[];
   attachments?: Attachment[];
   timeline?: TimelineEvent[];
   tags?: string[];
-  client_cnpj?: string; // New field
-  client_email?: string; // New field
-  client_name?: string; // New field
-  creatorName?: string; // Novo campo para o nome do criador da demanda
-  creatorEmail?: string; // Novo campo para o e-mail do criador da demanda
+  client_cnpj?: string;
+  client_email?: string;
+  client_name?: string;
+  creatorName?: string;
+  creatorEmail?: string;
 }
