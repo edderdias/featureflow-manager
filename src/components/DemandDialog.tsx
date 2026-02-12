@@ -71,6 +71,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           ...demand,
           creatorEmail: demand.creatorEmail || demand.client_email || user?.email,
           creatorName: demand.creatorName || demand.client_name || currentUserName,
+          stack: demand.stack || "none",
         });
       } else {
         setFormData({
