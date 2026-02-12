@@ -66,10 +66,10 @@ const StackCard = ({ demand, onEdit }: { demand: Demand; onEdit: (d: Demand) => 
         </div>
         <div className="flex items-center justify-between pt-1">
           <Badge variant="outline" className="text-xs font-mono">
-            {demand.system.toUpperCase()}
+            {(demand.system || "N/A").toUpperCase()}
           </Badge>
           <Badge variant="secondary" className="text-[10px]">
-            {demand.stack.toUpperCase()}
+            {(demand.stack || "none").toUpperCase()}
           </Badge>
         </div>
       </CardContent>
