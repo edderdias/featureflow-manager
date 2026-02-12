@@ -240,14 +240,15 @@ const KanbanBoard = () => {
       if (!user) throw new Error("Usuário não autenticado");
       if (!updatedDemandData.id) throw new Error("ID da demanda é obrigatório.");
 
-      const payload = {
+      // Mapeamento explícito para garantir que as colunas batam com o banco
+      const payload: any = {
         title: updatedDemandData.title,
         description: updatedDemandData.description,
         type: updatedDemandData.type,
         priority: updatedDemandData.priority,
         status: updatedDemandData.status,
         system: updatedDemandData.system,
-        stack: updatedDemandData.stack,
+        stack: updatedDemandData.stack || 'none',
         responsible: updatedDemandData.responsible,
         due_date: updatedDemandData.dueDate ? updatedDemandData.dueDate.toISOString() : null,
         completed_at: updatedDemandData.completedAt ? updatedDemandData.completedAt.toISOString() : null,
@@ -270,6 +271,7 @@ const KanbanBoard = () => {
         .eq("id", updatedDemandData.id)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
