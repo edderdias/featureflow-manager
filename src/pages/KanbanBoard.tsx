@@ -114,7 +114,6 @@ const KanbanBoard = () => {
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
   const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5);
 
-  // Hooks de sensores devem ser chamados no nível superior
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -181,10 +180,23 @@ const KanbanBoard = () => {
     const draggedId = active.id as string;
     let newStatus: DemandStatus | undefined;
 
+    // 1. Verifica se soltou diretamente sobre o ID de uma coluna
     if (columns.includes(over.id as any)) {
       newStatus = over.id as DemandStatus;
-    } else {
-      newStatus = over.data.current?.sortable?.containerId as DemandStatus;
+    } 
+    // 2. Verifica se soltou sobre um card e tenta pegar o containerId (ID da coluna)
+    else if (over.data.current?.sortable?.containerId) {
+      newStatus = over.data.current.sortable.containerId as DemandStatus;
+    }
+    // 3. Fallback: Procura manualmente em qual coluna o ID de destino está
+    else {
+      for (const status of columns) {
+        const colDemands = filteredDemands.filter(d => d.status === status);
+        if (colDemands.some(d => d.id === over.id)) {
+          newStatus = status;
+          break;
+        }
+      }
     }
 
     if (newStatus) {
