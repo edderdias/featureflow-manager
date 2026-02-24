@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels, getStatusColor } from "@/lib/demandUtils";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
