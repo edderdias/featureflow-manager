@@ -6,12 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, LayoutGrid, Table2, Calendar as CalendarIcon, GanttChartSquare, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { DemandPriority, DemandStatus, DemandType, Demand } from "@/types/demand";
-import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +56,7 @@ const DemandList = () => {
     })) as Demand[];
   };
 
-  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
+  const { data: demands, isLoading } = useQuery<Demand[], Error>({
     queryKey: ["demands", user?.id, userRole],
     queryFn: fetchDemands,
     enabled: !!user,
@@ -95,25 +94,6 @@ const DemandList = () => {
     onError: (err: any) => toast.error(`Erro: ${err.message}`),
   });
 
-  const deleteDemandMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("demands").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Excluída!");
-    },
-  });
-
-  const completeDemandMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("demands").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["demands"] }),
-  });
-
   const filteredDemands = (demands || []).filter((demand) => {
     const matchesSearch = demand.title.toLowerCase().includes(searchTerm.toLowerCase()) || demand.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
@@ -139,6 +119,84 @@ const DemandList = () => {
     if (bValue instanceof Date) bValue = bValue.getTime();
     return sortOrder === "asc" ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
   });
+
+  const renderCalendar = () => {
+    const start = startOfWeek(startOfMonth(calendarCurrentDate));
+    const end = endOfWeek(endOfMonth(calendarCurrentDate));
+    const days = eachDayOfInterval({ start, end });
+
+    return (
+      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold capitalize">
+            {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
+          </h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCalendarCurrentDate(subMonths(calendarCurrentDate, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setCalendarCurrentDate(new Date())}>Hoje</Button>
+            <Button variant="outline" size="sm" onClick={() => setCalendarCurrentDate(addMonths(calendarCurrentDate, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 border-b bg-muted/50">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(d => (
+            <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7">
+          {days.map((day, i) => {
+            const dayDemands = filteredDemands.filter(d => d.dueDate && isSameDay(d.dueDate, day));
+            return (
+              <div key={i} className={cn("min-h-[120px] border-b border-r p-2 transition-colors hover:bg-muted/20", !isSameMonth(day, calendarCurrentDate) && "bg-muted/10 text-muted-foreground")}>
+                <div className="text-right text-xs mb-1">{format(day, "d")}</div>
+                <div className="space-y-1">
+                  {dayDemands.map(d => (
+                    <div key={d.id} onClick={() => { setEditingDemand(d); setIsDialogOpen(true); }} className="text-[10px] p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20">
+                      {d.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderGantt = () => {
+    return (
+      <div className="bg-card rounded-lg border shadow-sm overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[250px]">Demanda</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Prazo</TableHead>
+              <TableHead className="min-w-[400px]">Cronograma</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedDemands.map(d => (
+              <TableRow key={d.id} onDoubleClick={() => { setEditingDemand(d); setIsDialogOpen(true); }} className="cursor-pointer">
+                <TableCell className="font-medium truncate max-w-[250px]">{d.title}</TableCell>
+                <TableCell><Badge variant={getStatusColor(d.status) as any}>{statusLabels[d.status]}</Badge></TableCell>
+                <TableCell className="text-xs">{d.dueDate ? format(d.dueDate, "dd/MM/yy") : "S/P"}</TableCell>
+                <TableCell>
+                  <div className="relative h-4 bg-muted rounded-full overflow-hidden">
+                    <div className="absolute h-full bg-primary opacity-50" style={{ left: '10%', width: '60%' }} />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   if (isLoading) return <div className="p-8 text-center">Carregando...</div>;
 
@@ -220,7 +278,7 @@ const DemandList = () => {
         {currentView === "grid" && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {sortedDemands.map((demand) => (
-              <DemandCard key={demand.id} demand={demand} onEdit={setEditingDemand} onDelete={deleteDemandMutation.mutate} onComplete={completeDemandMutation.mutate} />
+              <DemandCard key={demand.id} demand={demand} onEdit={setEditingDemand} />
             ))}
           </div>
         )}
@@ -255,6 +313,9 @@ const DemandList = () => {
             </Table>
           </div>
         )}
+
+        {currentView === "calendar" && renderCalendar()}
+        {currentView === "gantt" && renderGantt()}
       </div>
     </div>
   );
