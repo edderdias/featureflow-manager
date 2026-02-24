@@ -178,18 +178,18 @@ const KanbanBoard = () => {
     return matchesSearch && matchesDate;
   }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  const findContainer = (id: UniqueIdentifier) => {
-    console.log('Id ---> ', id)
+  const findContainer = (id: UniqueIdentifier) => {  
+    console.log('Columns ----> ', columns)
     if (columns.includes(id as DemandStatus)) {
       return id as DemandStatus;
     }
-    console.log('Demands ---> ' , demands)
-    const demand = demands?.find((d) => d.id === id);
-    console.log('Demand --> ', demand)
+    
+    const demand = demands?.find((d) => d.id === id);    
     return demand ? demand.status : null;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    console.log('Aqui --->')
     const { active, over } = event;
     
     if (!over) {
