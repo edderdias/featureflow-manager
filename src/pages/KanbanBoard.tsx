@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels } from "@/lib/demandUtils";
 import { User, Calendar, CheckSquare, Paperclip, Target, Plus, Search, Loader2 } from "lucide-react";
 import { format, isWithinInterval, startOfDay, endOfDay, isSameDay } from "date-fns";
-import { ptBR } from "date-fns, locale";
+import { ptBR } from "date-fns/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
