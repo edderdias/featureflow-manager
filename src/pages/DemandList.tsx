@@ -95,6 +95,34 @@ const DemandList = () => {
     onError: (err: any) => toast.error(`Erro: ${err.message}`),
   });
 
+  const deleteDemandMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("demands").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+      toast.success("Demanda excluída com sucesso!");
+    },
+    onError: (err: any) => toast.error(`Erro ao excluir: ${err.message}`),
+  });
+
+  const completeDemandMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("demands").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
+      toast.success("Demanda concluída!");
+    },
+  });
+
+  const handleEdit = (demand: Demand) => {
+    setEditingDemand(demand);
+    setIsDialogOpen(true);
+  };
+
   const filteredDemands = (demands || []).filter((demand) => {
     const matchesSearch = demand.title.toLowerCase().includes(searchTerm.toLowerCase()) || demand.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
@@ -120,6 +148,15 @@ const DemandList = () => {
     if (bValue instanceof Date) bValue = bValue.getTime();
     return sortOrder === "asc" ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
   });
+
+  const getCalendarItemColor = (type: DemandType) => {
+    switch (type) {
+      case "feature": return "bg-primary/10 text-primary border-primary/20";
+      case "bug": return "bg-destructive/10 text-destructive border-destructive/20";
+      case "repair": return "bg-warning/10 text-warning border-warning/20";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
 
   const renderCalendar = () => {
     const start = startOfWeek(startOfMonth(calendarCurrentDate));
@@ -155,7 +192,14 @@ const DemandList = () => {
                 <div className="text-right text-xs mb-1">{format(day, "d")}</div>
                 <div className="space-y-1">
                   {dayDemands.map(d => (
-                    <div key={d.id} onClick={() => { setEditingDemand(d); setIsDialogOpen(true); }} className="text-[10px] p-1 rounded bg-primary/10 text-primary truncate cursor-pointer hover:bg-primary/20">
+                    <div 
+                      key={d.id} 
+                      onClick={() => handleEdit(d)} 
+                      className={cn(
+                        "text-[10px] p-1 rounded border truncate cursor-pointer hover:brightness-95 transition-all",
+                        getCalendarItemColor(d.type)
+                      )}
+                    >
                       {d.title}
                     </div>
                   ))}
@@ -182,7 +226,7 @@ const DemandList = () => {
           </TableHeader>
           <TableBody>
             {sortedDemands.map(d => (
-              <TableRow key={d.id} onDoubleClick={() => { setEditingDemand(d); setIsDialogOpen(true); }} className="cursor-pointer">
+              <TableRow key={d.id} onDoubleClick={() => handleEdit(d)} className="cursor-pointer">
                 <TableCell className="font-medium truncate max-w-[250px]">{d.title}</TableCell>
                 <TableCell><Badge variant={getStatusColor(d.status) as any}>{statusLabels[d.status]}</Badge></TableCell>
                 <TableCell className="text-xs">{d.dueDate ? format(d.dueDate, "dd/MM/yy") : "S/P"}</TableCell>
@@ -279,7 +323,13 @@ const DemandList = () => {
         {currentView === "grid" && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {sortedDemands.map((demand) => (
-              <DemandCard key={demand.id} demand={demand} onEdit={setEditingDemand} />
+              <DemandCard 
+                key={demand.id} 
+                demand={demand} 
+                onEdit={handleEdit} 
+                onDelete={deleteDemandMutation.mutate}
+                onComplete={completeDemandMutation.mutate}
+              />
             ))}
           </div>
         )}
@@ -300,7 +350,7 @@ const DemandList = () => {
               </TableHeader>
               <TableBody>
                 {sortedDemands.map((demand) => (
-                  <TableRow key={demand.id} onDoubleClick={() => { setEditingDemand(demand); setIsDialogOpen(true); }} className="cursor-pointer">
+                  <TableRow key={demand.id} onDoubleClick={() => handleEdit(demand)} className="cursor-pointer">
                     <TableCell className="font-medium">{demand.title}</TableCell>
                     <TableCell><Badge variant={getTypeColor(demand.type) as any}>{typeLabels[demand.type]}</Badge></TableCell>
                     <TableCell><Badge variant={getPriorityColor(demand.priority) as any}>{priorityLabels[demand.priority]}</Badge></TableCell>

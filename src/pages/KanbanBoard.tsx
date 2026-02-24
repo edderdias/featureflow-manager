@@ -148,6 +148,11 @@ const KanbanBoard = () => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["demands"] }); setIsDialogOpen(false); },
   });
 
+  const handleEdit = (demand: Demand) => {
+    setEditingDemand(demand);
+    setIsDialogOpen(true);
+  };
+
   const filteredDemands = (demands || []).filter(d => {
     const matchesSearch = d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.description.toLowerCase().includes(searchTerm.toLowerCase());
     let matchesDate = true;
@@ -190,10 +195,10 @@ const KanbanBoard = () => {
             {columns.map((status) => {
               const colDemands = filteredDemands.filter(d => d.status === status);
               const display = status === "done" ? colDemands.slice(0, visibleDoneDemandsCount) : colDemands;
-              return <KanbanColumn key={status} id={status} title={statusLabels[status]} demands={display} totalDemandsCount={colDemands.length} onEdit={setEditingDemand} showLoadMore={status === "done" && colDemands.length > visibleDoneDemandsCount} onLoadMore={() => setVisibleDoneDemandsCount(v => v + 5)} />;
+              return <KanbanColumn key={status} id={status} title={statusLabels[status]} demands={display} totalDemandsCount={colDemands.length} onEdit={handleEdit} showLoadMore={status === "done" && colDemands.length > visibleDoneDemandsCount} onLoadMore={() => setVisibleDoneDemandsCount(v => v + 5)} />;
             })}
           </div>
-          <DragOverlay>{activeDragId ? <div className="w-[280px]"><DraggableDemandCard demand={demands!.find(d => d.id === activeDragId)!} onEdit={setEditingDemand} /></div> : null}</DragOverlay>
+          <DragOverlay>{activeDragId ? <div className="w-[280px]"><DraggableDemandCard demand={demands!.find(d => d.id === activeDragId)!} onEdit={handleEdit} /></div> : null}</DragOverlay>
         </DndContext>
       </div>
     </div>

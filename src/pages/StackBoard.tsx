@@ -89,6 +89,11 @@ const StackBoard = () => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["demands"] }); setIsDialogOpen(false); },
   });
 
+  const handleEdit = (demand: Demand) => {
+    setEditingDemand(demand);
+    setIsDialogOpen(true);
+  };
+
   const filtered = (demands || []).filter(d => {
     const matchesSearch = d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.description.toLowerCase().includes(searchTerm.toLowerCase());
     let matchesDate = true;
@@ -122,7 +127,7 @@ const StackBoard = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {Object.entries(cols).map(([key, list]) => (
-            <StackColumn key={key} title={key.toUpperCase()} demands={list} onEdit={setEditingDemand} visibleCount={visibleCounts[key]} onShowMore={() => setVisibleCounts(v => ({ ...v, [key]: v[key] + 5 }))} />
+            <StackColumn key={key} title={key.toUpperCase()} demands={list} onEdit={handleEdit} visibleCount={visibleCounts[key]} onShowMore={() => setVisibleCounts(v => ({ ...v, [key]: v[key] + 5 }))} />
           ))}
         </div>
       </div>
