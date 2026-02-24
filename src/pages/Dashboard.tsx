@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels } from "@/lib/demandUtils";
-import { User, Calendar, CheckSquare, Paperclip, Plus, Search } from "lucide-react";
+import { User, Calendar, CheckSquare, Paperclip, Plus, Search, Loader2 } from "lucide-react";
 import { format, isWithinInterval, startOfDay, endOfDay, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -210,15 +210,42 @@ const Dashboard = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (demandData: Partial<Demand>) => {
-      const { id, ...rest } = demandData;
-      const payload = { ...rest, updated_at: new Date().toISOString() };
-      if (id) return supabase.from("demands").update(payload).eq("id", id);
-      return supabase.from("demands").insert({ ...payload, user_id: user?.id, created_at: new Date().toISOString() });
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      const { id, dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = demandData;
+      
+      const payload: any = {
+        ...rest,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Mapeamento explícito para snake_case
+      if (dueDate !== undefined) payload.due_date = dueDate ? (dueDate instanceof Date ? dueDate.toISOString() : dueDate) : null;
+      if (completedAt !== undefined) payload.completed_at = completedAt ? (completedAt instanceof Date ? completedAt.toISOString() : completedAt) : null;
+      if (storyPoints !== undefined) payload.story_points = storyPoints;
+      if (creatorName !== undefined) payload.creator_name = creatorName;
+      if (creatorEmail !== undefined) payload.creator_email = creatorEmail;
+
+      if (id) {
+        const { error } = await supabase.from("demands").update(payload).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("demands").insert({ 
+          ...payload, 
+          user_id: user.id, 
+          created_at: new Date().toISOString() 
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ["demands"] }); 
-      setIsDialogOpen(false); 
+      setIsDialogOpen(false);
+      toast.success("Demanda atualizada com sucesso!");
     },
+    onError: (error: any) => {
+      toast.error(`Erro ao salvar demanda: ${error.message}`);
+    }
   });
 
   const handleEdit = (demand: Demand) => {
@@ -268,15 +295,14 @@ const Dashboard = () => {
       saveMutation.mutate({
         id: activeId,
         status: newStatus,
-        completed_at: newStatus === "done" ? new Date().toISOString() : null
+        completedAt: newStatus === "done" ? new Date().toISOString() : null
       });
-      toast.success(`Status alterado para: ${statusLabels[newStatus]}`);
     }
 
     setActiveDragId(null);
   };
 
-  if (isLoading) return <div className="p-8 text-center">Carregando...</div>;
+  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
     <div className="min-h-screen bg-background">
