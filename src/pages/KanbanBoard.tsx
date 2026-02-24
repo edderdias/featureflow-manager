@@ -190,12 +190,9 @@ const KanbanBoard = () => {
     }
     // 3. Fallback: Procura manualmente em qual coluna o ID de destino está
     else {
-      for (const status of columns) {
-        const colDemands = filteredDemands.filter(d => d.status === status);
-        if (colDemands.some(d => d.id === over.id)) {
-          newStatus = status;
-          break;
-        }
+      const targetDemand = demands?.find(d => d.id === over.id);
+      if (targetDemand) {
+        newStatus = targetDemand.status;
       }
     }
 
