@@ -210,11 +210,13 @@ const KanbanBoard = () => {
     const activeContainer = findContainer(activeId);
     const overContainer = findContainer(overId);
 
+    console.log('Status ---> ', activationConstraint, ' - ', overContainer)
+
     if (!activeContainer || !overContainer) {
       setActiveDragId(null);
       return;
     }
-    console.log('Status ---> ', activationConstraint, ' - ', overContainer)
+
     if (activeContainer !== overContainer) {
       const newStatus = overContainer as DemandStatus;
       saveMutation.mutate({
