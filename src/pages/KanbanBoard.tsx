@@ -185,6 +185,7 @@ const KanbanBoard = () => {
     }
     console.log('Demands ---> ' , demands)
     const demand = demands?.find((d) => d.id === id);
+    console.log('Demand --> ', demand)
     return demand ? demand.status : null;
   };
 
