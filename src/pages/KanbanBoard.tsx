@@ -179,12 +179,10 @@ const KanbanBoard = () => {
   }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const findContainer = (id: UniqueIdentifier) => {  
-    console.log('Columns ----> ', columns)
+    console.log('Columns ----> ', columns.includes)
     if (columns.includes(id as DemandStatus)) {
       return id as DemandStatus;
     }
-
-    console.log('Teste ---> ')
     
     const demand = demands?.find((d) => d.id === id);    
     return demand ? demand.status : null;
