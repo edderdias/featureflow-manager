@@ -1,6 +1,5 @@
-import React, { useState, Suspense } from "react"; // Adicionado Suspense e React
+import React, { useState, Suspense } from "react";
 import { DemandCard } from "@/components/DemandCard";
-// Removido import direto do DemandDialog
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { toast } from "sonner";
-import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { format, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +19,9 @@ import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabel
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { DateRange } from "react-day-picker";
 
-// Lazy load DemandDialog
 const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
 const DemandList = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, userRole } = useAuth();
 
@@ -45,9 +42,7 @@ const DemandList = () => {
   const fetchDemands = async () => {
     if (!user) return [];
     let query = supabase.from("demands").select("*");
-    if (userRole === "user") {
-      query = query.eq("user_id", user.id);
-    }
+    if (userRole === "user") query = query.eq("user_id", user.id);
     const { data, error } = await query;
     if (error) throw error;
     return data.map((d: any) => ({
@@ -68,227 +63,84 @@ const DemandList = () => {
     enabled: !!user,
   });
 
-  const addDemandMutation = useMutation({
-    mutationFn: async (newDemandData: Partial<Demand>) => {
+  const saveDemandMutation = useMutation({
+    mutationFn: async (demandData: Partial<Demand>) => {
       if (!user) throw new Error("Usuário não autenticado");
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = newDemandData;
-      const { data, error } = await supabase
-        .from("demands")
-        .insert({
-          ...rest,
-          user_id: user.id,
-          created_at: (createdAt || new Date()).toISOString(),
-          updated_at: (updatedAt || new Date()).toISOString(),
-          due_date: dueDate ? dueDate.toISOString() : null,
-          completed_at: completedAt ? completedAt.toISOString() : null,
-          story_points: storyPoints,
-          creator_name: creatorName,
-          creator_email: creatorEmail,
-          client_email: creatorEmail,
-          client_name: creatorName,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const { id, dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = demandData;
+      const payload = {
+        ...rest,
+        updated_at: new Date().toISOString(),
+        due_date: dueDate ? dueDate.toISOString() : null,
+        completed_at: completedAt ? completedAt.toISOString() : null,
+        story_points: storyPoints,
+        creator_name: creatorName,
+        creator_email: creatorEmail,
+      };
+      if (id) {
+        const { data, error } = await supabase.from("demands").update(payload).eq("id", id).select().single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase.from("demands").insert({ ...payload, user_id: user.id, created_at: new Date().toISOString() }).select().single();
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Demanda criada com sucesso!");
-      setIsDialogOpen(false);
-    },
-    onError: (err) => {
-      toast.error(`Erro ao criar demanda: ${err.message}`);
-    },
-  });
-
-  const updateDemandMutation = useMutation({
-    mutationFn: async (updatedDemandData: Partial<Demand>) => {
-      if (!user) throw new Error("Usuário não autenticado");
-      const { dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = updatedDemandData;
-      const { data, error } = await supabase
-        .from("demands")
-        .update({
-          ...rest,
-          updated_at: (updatedAt || new Date()).toISOString(),
-          due_date: dueDate ? dueDate.toISOString() : null,
-          completed_at: completedAt ? completedAt.toISOString() : null,
-          story_points: storyPoints,
-          creator_name: creatorName,
-          creator_email: creatorEmail,
-        })
-        .eq("id", updatedDemandData.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Demanda atualizada com sucesso!");
+      toast.success("Demanda salva!");
       setIsDialogOpen(false);
       setEditingDemand(undefined);
     },
-    onError: (err) => {
-      toast.error(`Erro ao atualizar demanda: ${err.message}`);
-    },
+    onError: (err: any) => toast.error(`Erro: ${err.message}`),
   });
 
   const deleteDemandMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!user) throw new Error("Usuário não autenticado");
       const { error } = await supabase.from("demands").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Demanda excluída com sucesso!");
-    },
-    onError: (err) => {
-      toast.error(`Erro ao excluir demanda: ${err.message}`);
+      toast.success("Excluída!");
     },
   });
 
   const completeDemandMutation = useMutation({
     mutationFn: async (id: string) => {
-      if (!user) throw new Error("Usuário não autenticado");
-      const { data, error } = await supabase
-        .from("demands")
-        .update({ status: "done", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .select()
-        .single();
+      const { error } = await supabase.from("demands").update({ status: "done", completed_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
-      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["demands"] });
-      toast.success("Demanda concluída com sucesso!");
-    },
-    onError: (err) => {
-      toast.error(`Erro ao concluir demanda: ${err.message}`);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["demands"] }),
   });
-
-  const handleSaveDemand = (demandData: Partial<Demand>) => {
-    if (demandData.id) {
-      updateDemandMutation.mutate(demandData);
-    } else {
-      addDemandMutation.mutate(demandData);
-    }
-  };
-
-  const handleEditDemand = (demand: Demand) => {
-    setEditingDemand(demand);
-    setIsDialogOpen(true);
-  };
-
-  const handleDeleteDemand = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta demanda?")) {
-      deleteDemandMutation.mutate(id);
-    }
-  };
-
-  const handleCompleteDemand = (id: string) => {
-    if (window.confirm("Tem certeza que deseja concluir esta demanda?")) {
-      completeDemandMutation.mutate(id);
-    }
-  };
 
   const filteredDemands = (demands || []).filter((demand) => {
-    const matchesSearch =
-      demand.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      demand.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      demand.responsible.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (demand.client_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.client_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.client_cnpj?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.creatorName?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (demand.creatorEmail?.toLowerCase().includes(searchTerm.toLowerCase()));
-
+    const matchesSearch = demand.title.toLowerCase().includes(searchTerm.toLowerCase()) || demand.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPriority = filterPriority === "all" || demand.priority === filterPriority;
-    let matchesStatus = true;
-    if (filterStatus === "active") {
-      matchesStatus = demand.status !== "done";
-    } else if (filterStatus !== "all") {
-      matchesStatus = demand.status === filterStatus;
-    }
+    const matchesStatus = filterStatus === "all" ? true : filterStatus === "active" ? demand.status !== "done" : demand.status === filterStatus;
     const matchesType = filterType === "all" || demand.type === filterType;
-    const matchesDateRange = !dateRange?.from || !dateRange?.to || (
-      demand.createdAt && isWithinInterval(demand.createdAt, { start: dateRange.from, end: dateRange.to })
-    );
+    
+    let matchesDateRange = true;
+    if (dateRange?.from && dateRange?.to) {
+      const start = startOfDay(dateRange.from);
+      const end = endOfDay(dateRange.to);
+      matchesDateRange = isWithinInterval(demand.createdAt, { start, end });
+    } else if (dateRange?.from) {
+      matchesDateRange = isSameDay(demand.createdAt, dateRange.from);
+    }
+
     return matchesSearch && matchesPriority && matchesStatus && matchesType && matchesDateRange;
   });
-
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
-  };
 
   const sortedDemands = [...filteredDemands].sort((a, b) => {
     let aValue: any = (a as any)[sortField];
     let bValue: any = (b as any)[sortField];
     if (aValue instanceof Date) aValue = aValue.getTime();
     if (bValue instanceof Date) bValue = bValue.getTime();
-    if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-    return 0;
+    return sortOrder === "asc" ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
   });
 
-  const monthStart = startOfMonth(calendarCurrentDate);
-  const monthEnd = endOfMonth(calendarCurrentDate);
-  const startDayOfCalendar = startOfWeek(monthStart);
-  const endDayOfCalendar = endOfWeek(monthEnd);
-  const daysInCalendar = eachDayOfInterval({ start: startDayOfCalendar, end: endDayOfCalendar });
-
-  const getDemandsByDate = (date: Date) => {
-    return filteredDemands.filter((demand) => demand.createdAt && isSameDay(demand.createdAt, date));
-  };
-
-  const previousMonth = () => setCalendarCurrentDate(subMonths(calendarCurrentDate, 1));
-  const nextMonth = () => setCalendarCurrentDate(addMonths(calendarCurrentDate, 1));
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-  const ganttMonthStart = startOfMonth(calendarCurrentDate);
-  const ganttMonthEnd = endOfMonth(calendarCurrentDate);
-  const ganttDaysInMonth = eachDayOfInterval({ start: ganttMonthStart, end: ganttMonthEnd });
-
-  const getTaskPosition = (startDate: Date, endDate: Date) => {
-    const start = Math.max(0, differenceInDays(startDate, ganttMonthStart));
-    const duration = differenceInDays(endDate, startDate) || 1;
-    const totalDays = ganttDaysInMonth.length;
-    return {
-      left: `${(start / totalDays) * 100}%`,
-      width: `${(duration / totalDays) * 100}%`,
-    };
-  };
-
-  const demandsWithDates = filteredDemands.map((demand) => ({
-    ...demand,
-    endDate: demand.status === "done" && demand.completedAt
-      ? demand.completedAt
-      : demand.dueDate || new Date(demand.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000),
-  }));
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-muted-foreground">Carregando demandas...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-destructive">Erro ao carregar demandas: ${error.message}</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="p-8 text-center">Carregando...</div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -296,16 +148,12 @@ const DemandList = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold mb-2">Gerenciar Demandas</h1>
-            <p className="text-muted-foreground">
-              Visualize suas demandas de diferentes formas
-            </p>
+            <p className="text-muted-foreground">Visualize suas demandas de diferentes formas</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
+              <SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Status</SelectItem>
                 <SelectItem value="active">Demandas Ativas</SelectItem>
@@ -318,20 +166,12 @@ const DemandList = () => {
             <Suspense fallback={<Button size="lg" disabled>Carregando...</Button>}>
               <DemandDialog
                 demand={editingDemand}
-                onSave={handleSaveDemand}
+                onSave={saveDemandMutation.mutate}
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 trigger={
-                  <Button 
-                    size="lg" 
-                    className="gap-2"
-                    onClick={() => {
-                      setEditingDemand(undefined);
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-5 w-5" />
-                    Nova Demanda
+                  <Button size="lg" className="gap-2" onClick={() => { setEditingDemand(undefined); setIsDialogOpen(true); }}>
+                    <Plus className="h-5 w-5" /> Nova Demanda
                   </Button>
                 }
               />
@@ -340,24 +180,12 @@ const DemandList = () => {
         </div>
 
         <div className="mb-6">
-          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as "grid" | "table" | "calendar" | "gantt")} className="w-full">
+          <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as any)} className="w-full">
             <TabsList className="grid w-full grid-cols-4 lg:w-auto">
-              <TabsTrigger value="grid" className="gap-2">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="hidden sm:inline">Cards</span>
-              </TabsTrigger>
-              <TabsTrigger value="table" className="gap-2">
-                <Table2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Tabela</span>
-              </TabsTrigger>
-              <TabsTrigger value="calendar" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Calendário</span>
-              </TabsTrigger>
-              <TabsTrigger value="gantt" className="gap-2">
-                <GanttChartSquare className="h-4 w-4" />
-                <span className="hidden sm:inline">Gantt</span>
-              </TabsTrigger>
+              <TabsTrigger value="grid" className="gap-2"><LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Cards</span></TabsTrigger>
+              <TabsTrigger value="table" className="gap-2"><Table2 className="h-4 w-4" /><span className="hidden sm:inline">Tabela</span></TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-2"><CalendarIcon className="h-4 w-4" /><span className="hidden sm:inline">Calendário</span></TabsTrigger>
+              <TabsTrigger value="gantt" className="gap-2"><GanttChartSquare className="h-4 w-4" /><span className="hidden sm:inline">Gantt</span></TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -365,18 +193,11 @@ const DemandList = () => {
         <div className="mb-6 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar demandas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar demandas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Select value={filterPriority} onValueChange={setFilterPriority}>
-              <SelectTrigger>
-                <SelectValue placeholder="Prioridade" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Prioridades</SelectItem>
                 <SelectItem value="high">Alta</SelectItem>
@@ -385,9 +206,7 @@ const DemandList = () => {
               </SelectContent>
             </Select>
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Tipos</SelectItem>
                 <SelectItem value="feature">Novo Recurso</SelectItem>
@@ -398,28 +217,10 @@ const DemandList = () => {
           </div>
         </div>
 
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {filteredDemands.length} de {demands?.length || 0} demandas
-          </p>
-        </div>
-
-        {filteredDemands.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhuma demanda encontrada</p>
-          </div>
-        )}
-
         {currentView === "grid" && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredDemands.map((demand) => (
-              <DemandCard 
-                key={demand.id} 
-                demand={demand} 
-                onEdit={handleEditDemand} 
-                onDelete={handleDeleteDemand} 
-                onComplete={handleCompleteDemand}
-              />
+            {sortedDemands.map((demand) => (
+              <DemandCard key={demand.id} demand={demand} onEdit={setEditingDemand} onDelete={deleteDemandMutation.mutate} onComplete={completeDemandMutation.mutate} />
             ))}
           </div>
         )}
@@ -429,185 +230,29 @@ const DemandList = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("title")} className="h-8 px-2">
-                      Título
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("type")} className="h-8 px-2">
-                      Tipo
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("priority")} className="h-8 px-2">
-                      Prioridade
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("status")} className="h-8 px-2">
-                      Status
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("system")} className="h-8 px-2">
-                      Sistema
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("responsible")} className="h-8 px-2">
-                      Responsável
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort("createdAt")} className="h-8 px-2">
-                      Criado em
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
+                  <TableHead onClick={() => { setSortField("title"); setSortOrder(sortOrder === "asc" ? "desc" : "asc"); }} className="cursor-pointer">Título <ArrowUpDown className="inline h-4 w-4" /></TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Prioridade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Sistema</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead onClick={() => { setSortField("createdAt"); setSortOrder(sortOrder === "asc" ? "desc" : "asc"); }} className="cursor-pointer">Criado em <ArrowUpDown className="inline h-4 w-4" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedDemands.map((demand) => (
-                  <TableRow key={demand.id}>
+                  <TableRow key={demand.id} onDoubleClick={() => { setEditingDemand(demand); setIsDialogOpen(true); }} className="cursor-pointer">
                     <TableCell className="font-medium">{demand.title}</TableCell>
-                    <TableCell>
-                      <Badge variant={getTypeColor(demand.type) as any}>{typeLabels[demand.type]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getPriorityColor(demand.priority) as any}>{priorityLabels[demand.priority]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(demand.status) as any}>{statusLabels[demand.status]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{demand.system.toUpperCase()}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant={getTypeColor(demand.type) as any}>{typeLabels[demand.type]}</Badge></TableCell>
+                    <TableCell><Badge variant={getPriorityColor(demand.priority) as any}>{priorityLabels[demand.priority]}</Badge></TableCell>
+                    <TableCell><Badge variant={getStatusColor(demand.status) as any}>{statusLabels[demand.status]}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{demand.system.toUpperCase()}</Badge></TableCell>
                     <TableCell>{demand.responsible}</TableCell>
                     <TableCell>{format(demand.createdAt, "dd/MM/yyyy", { locale: ptBR })}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
-        )}
-
-        {currentView === "calendar" && (
-          <div className="space-y-6">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold capitalize">
-                {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
-              </h2>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={previousMonth}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCalendarCurrentDate(new Date())}>
-                  Hoje
-                </Button>
-                <Button variant="outline" size="sm" onClick={nextMonth}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {weekDays.map((day) => (
-                <div key={day} className="text-center font-semibold text-sm p-2">
-                  {day}
-                </div>
-              ))}
-              {daysInCalendar.map((day) => {
-                const dayDemands = getDemandsByDate(day);
-                const isCurrentMonth = isSameMonth(day, calendarCurrentDate);
-                return (
-                  <div
-                    key={day.toISOString()}
-                    className={`min-h-[120px] p-2 border rounded-md ${!isCurrentMonth ? "opacity-50 bg-muted/20" : "bg-card"}`}
-                  >
-                    <div className="text-sm font-medium mb-1">{format(day, "d")}</div>
-                    <div className="space-y-1">
-                      {dayDemands.map((demand) => (
-                        <div
-                          key={demand.id}
-                          className="text-xs p-1 rounded bg-primary/10 hover:bg-primary/20 cursor-pointer truncate"
-                          onClick={() => handleEditDemand(demand)}
-                        >
-                          <Badge variant={getPriorityColor(demand.priority) as any} className="h-4 text-[10px] mb-1">
-                            {priorityLabels[demand.priority]}
-                          </Badge>
-                          <div className="truncate">{demand.title}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {currentView === "gantt" && (
-          <div className="space-y-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold capitalize">
-                {format(calendarCurrentDate, "MMMM yyyy", { locale: ptBR })}
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <div className="min-w-[1200px]">
-                <div className="flex border-b mb-4 pb-2">
-                  <div className="w-64 font-semibold">Demanda</div>
-                  <div className="flex-1 flex">
-                    {ganttDaysInMonth.map((day, index) => (
-                      <div key={index} className="flex-1 text-center text-xs text-muted-foreground">
-                        {format(day, "d")}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {demandsWithDates.map((demand) => (
-                    <div key={demand.id} className="p-2 border rounded-md">
-                      <div className="flex items-center">
-                        <div className="w-64 pr-4">
-                          <div className="font-medium text-sm truncate">{demand.title}</div>
-                          <div className="flex gap-1 mt-1">
-                            <Badge variant={getPriorityColor(demand.priority) as any} className="text-xs">
-                              {priorityLabels[demand.priority]}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {statusLabels[demand.status]}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex-1 relative h-8">
-                          <div className="absolute top-0 left-0 right-0 h-full border-t border-dashed border-border" />
-                          {ganttDaysInMonth.map((_, index) => (
-                            <div
-                              key={index}
-                              className="absolute top-0 h-full border-r border-border"
-                              style={{ left: `${((index + 1) / ganttDaysInMonth.length) * 100}%` }}
-                            />
-                          ))}
-                          <div
-                            className="absolute top-1/2 -translate-y-1/2 h-6 bg-primary/80 hover:bg-primary rounded cursor-pointer transition-colors"
-                            style={getTaskPosition(demand.createdAt, demand.endDate)}
-                            title={`${format(demand.createdAt, "dd/MM")} - ${format(demand.endDate, "dd/MM")}`}
-                            onClick={() => handleEditDemand(demand)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

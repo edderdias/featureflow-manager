@@ -19,11 +19,13 @@ export const DemandCard = ({ demand, onEdit, onDelete, onComplete }: DemandCardP
   const { userRole } = useAuth();
   
   const daysUntilDue = demand.dueDate && demand.status !== "done" ? differenceInDays(demand.dueDate, new Date()) : null;
-  const isDueSoon = daysUntilDue === 1;
   const isOverdue = daysUntilDue !== null && daysUntilDue <= 0 && demand.status !== "done";
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300 flex flex-col h-full">
+    <Card 
+      className="hover:shadow-md transition-all duration-300 flex flex-col h-full cursor-pointer"
+      onDoubleClick={() => onEdit?.(demand)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg leading-tight line-clamp-2 break-words flex-1">

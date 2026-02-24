@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     : user?.email || "Usuário Desconhecido";
 
   const [formData, setFormData] = useState<Partial<Demand>>({});
-
+  const [activeTab, setActiveTab] = useState("info");
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [newLink, setNewLink] = useState({ name: "", url: "" });
   const [newTag, setNewTag] = useState("");
@@ -94,8 +94,69 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
         });
       }
       setStatusError(null);
+      setActiveTab("info");
     }
   }, [demand, open, currentUserName, user?.email]);
+
+  const uploadFileToSupabase = async (file: File): Promise<Attachment | null> => {
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const filePath = `public/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('client-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('client-attachments')
+        .getPublicUrl(filePath);
+
+      return {
+        id: uuidv4(),
+        name: file.name,
+        type: file.type.startsWith('image/') ? 'image' : 'doc',
+        url: publicUrlData.publicUrl,
+        uploadedAt: new Date(),
+      };
+    } catch (error: any) {
+      console.error("Error uploading file:", error);
+      toast.error(`Erro ao fazer upload: ${error.message}`);
+      return null;
+    }
+  };
+
+  const handlePaste = useCallback(async (event: ClipboardEvent) => {
+    if (!open || activeTab !== "attachments") return;
+
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setIsUploading(true);
+          const newAttachment = await uploadFileToSupabase(file);
+          if (newAttachment) {
+            setFormData(prev => ({
+              ...prev,
+              attachments: [...(prev.attachments || []), newAttachment]
+            }));
+            toast.success("Imagem colada e enviada com sucesso!");
+          }
+          setIsUploading(false);
+        }
+      }
+    }
+  }, [open, activeTab]);
+
+  useEffect(() => {
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [handlePaste]);
 
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
     queryKey: ["tags", user?.id],
@@ -136,41 +197,16 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     if (!file) return;
 
     setIsUploading(true);
-    try {
-      const fileExtension = file.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = `public/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('client-attachments')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('client-attachments')
-        .getPublicUrl(filePath);
-
-      const newAttachment: Attachment = {
-        id: uuidv4(),
-        name: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'doc',
-        url: publicUrlData.publicUrl,
-        uploadedAt: new Date(),
-      };
-
+    const newAttachment = await uploadFileToSupabase(file);
+    if (newAttachment) {
       setFormData(prev => ({
         ...prev,
         attachments: [...(prev.attachments || []), newAttachment]
       }));
       toast.success("Arquivo enviado com sucesso!");
-    } catch (error: any) {
-      console.error("Error uploading file:", error);
-      toast.error(`Erro ao fazer upload: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
     }
+    setIsUploading(false);
+    event.target.value = '';
   };
 
   const handleSave = () => {
@@ -290,7 +326,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           <DialogTitle>{demand ? "Editar Demanda" : "Nova Demanda"}</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="info" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
@@ -567,6 +603,11 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
 
           <TabsContent value="attachments" className="space-y-4 mt-4">
             <div className="space-y-6">
+              <div className="p-4 border-2 border-dashed rounded-lg text-center bg-muted/20">
+                <p className="text-sm text-muted-foreground">
+                  Dica: Você pode colar uma imagem diretamente aqui (Ctrl+V)
+                </p>
+              </div>
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label>Fazer Upload de Arquivo</Label>

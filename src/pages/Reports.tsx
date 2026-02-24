@@ -1,193 +1,87 @@
+import { useState, Suspense, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Download, Plus, Search } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
 import { Demand } from "@/types/demand";
+import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { DateRange } from "react-day-picker";
+import { startOfDay, endOfDay, isWithinInterval, isSameDay } from "date-fns";
+import { toast } from "sonner";
+
+const DemandDialog = import.meta.env.VITE_LOVABLE_TAGGER ? (await import("@/components/DemandDialog")).DemandDialog : (await import("@/components/DemandDialog")).DemandDialog;
 
 const Reports = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchDemands = async () => {
     if (!user) return [];
-    // Alterado: Removido .eq("user_id", user.id) para buscar todas as demandas
-    const { data, error } = await supabase
-      .from("demands")
-      .select("*");
+    const { data, error } = await supabase.from("demands").select("*");
     if (error) throw error;
-    return data.map((d: any) => ({
-      ...d,
-      createdAt: new Date(d.created_at),
-      updatedAt: new Date(d.updated_at),
-      dueDate: d.due_date ? new Date(d.due_date) : undefined,
-    })) as Demand[];
+    return data.map((d: any) => ({ ...d, createdAt: new Date(d.created_at), updatedAt: new Date(d.updated_at), dueDate: d.due_date ? new Date(d.due_date) : undefined })) as Demand[];
   };
 
-  const { data: demands, isLoading, error } = useQuery<Demand[], Error>({
-    queryKey: ["demands", user?.id],
-    queryFn: fetchDemands,
-    enabled: !!user,
+  const { data: demands, isLoading } = useQuery<Demand[]>({ queryKey: ["demands", user?.id], queryFn: fetchDemands, enabled: !!user });
+
+  const saveMutation = useMutation({
+    mutationFn: async (demandData: Partial<Demand>) => {
+      const { id, ...rest } = demandData;
+      if (id) return supabase.from("demands").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", id);
+      return supabase.from("demands").insert({ ...rest, user_id: user?.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["demands"] }); setIsDialogOpen(false); toast.success("Demanda salva!"); },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-muted-foreground">Carregando relatórios...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="p-8 text-center">Carregando...</div>;
 
-  if (error) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-destructive">Erro ao carregar relatórios: {error.message}</p>
-      </div>
-    );
-  }
+  const filtered = (demands || []).filter(d => {
+    const matchesSearch = d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.description.toLowerCase().includes(searchTerm.toLowerCase());
+    let matchesDate = true;
+    if (dateRange?.from && dateRange?.to) matchesDate = isWithinInterval(d.createdAt, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to) });
+    else if (dateRange?.from) matchesDate = isSameDay(d.createdAt, dateRange.from);
+    return matchesSearch && matchesDate;
+  }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  // Bug reports by system
-  const bugsBySystem = (demands || [])
-    .filter(d => d.type === "bug")
-    .reduce((acc, demand) => {
-      const system = demand.system.toUpperCase();
-      const existing = acc.find(item => item.sistema === system);
-      if (existing) {
-        existing.bugs += 1;
-      } else {
-        acc.push({ sistema: system, bugs: 1 });
-      }
-      return acc;
-    }, [] as { sistema: string; bugs: number }[])
-    .sort((a, b) => b.bugs - a.bugs);
+  const bugsBySystem = filtered.filter(d => d.type === "bug").reduce((acc, d) => {
+    const system = d.system.toUpperCase();
+    const existing = acc.find(item => item.sistema === system);
+    if (existing) existing.bugs += 1; else acc.push({ sistema: system, bugs: 1 });
+    return acc;
+  }, [] as { sistema: string; bugs: number }[]).sort((a, b) => b.bugs - a.bugs);
 
-  // Priority distribution
   const priorityData = [
-    { prioridade: "Alta", quantidade: (demands || []).filter(d => d.priority === "high").length },
-    { prioridade: "Média", quantidade: (demands || []).filter(d => d.priority === "medium").length },
-    { prioridade: "Baixa", quantidade: (demands || []).filter(d => d.priority === "low").length },
-  ];
-
-  // Type distribution
-  const typeData = [
-    { tipo: "Novo Recurso", quantidade: (demands || []).filter(d => d.type === "feature").length },
-    { tipo: "Bug", quantidade: (demands || []).filter(d => d.type === "bug").length },
-    { tipo: "Reparo", quantidade: (demands || []).filter(d => d.type === "repair").length },
-  ];
-
-  // Status progress (mock timeline data) - This would ideally come from actual demand history
-  const progressData = [
-    { semana: "Sem 1", concluidas: 5, iniciadas: 8 },
-    { semana: "Sem 2", concluidas: 7, iniciadas: 6 },
-    { semana: "Sem 3", concluidas: 4, iniciadas: 9 },
-    { semana: "Sem 4", concluidas: 6, iniciadas: 7 },
+    { prioridade: "Alta", quantidade: filtered.filter(d => d.priority === "high").length },
+    { prioridade: "Média", quantidade: filtered.filter(d => d.priority === "medium").length },
+    { prioridade: "Baixa", quantidade: filtered.filter(d => d.priority === "low").length },
   ];
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Relatórios</h1>
-            <p className="text-muted-foreground">
-              Análise detalhada das demandas e métricas do sistema
-            </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div><h1 className="text-4xl font-bold mb-2">Relatórios</h1><p className="text-muted-foreground">Análise detalhada das demandas</p></div>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <DateRangePicker dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" /></div>
+            <Button size="lg" variant="outline" className="gap-2"><Download className="h-5 w-5" /> Exportar</Button>
+            <Suspense fallback={<Button size="lg" disabled>Carregando...</Button>}>
+              <DemandDialog onSave={saveMutation.mutate} open={isDialogOpen} onOpenChange={setIsDialogOpen} trigger={<Button size="lg" className="gap-2" onClick={() => setIsDialogOpen(true)}><Plus className="h-5 w-5" /> Nova Demanda</Button>} />
+            </Suspense>
           </div>
-          <Button size="lg" className="gap-2">
-            <Download className="h-5 w-5" />
-            Exportar PDF
-          </Button>
         </div>
-
         <div className="grid gap-6">
-          {/* Bugs by System */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Problemas Mais Relatados por Sistema</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={bugsBySystem}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="sistema" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="bugs" fill="hsl(var(--destructive))" name="Bugs Reportados" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Priority and Type Distribution */}
+          <Card><CardHeader><CardTitle>Problemas por Sistema</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={350}><BarChart data={bugsBySystem}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="sistema" /><YAxis /><Tooltip /><Legend /><Bar dataKey="bugs" fill="hsl(var(--destructive))" name="Bugs" /></BarChart></ResponsiveContainer></CardContent></Card>
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribuição por Prioridade</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={priorityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="prioridade" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="quantidade" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribuição por Tipo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={typeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="tipo" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="quantidade" fill="hsl(var(--accent))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <Card><CardHeader><CardTitle>Prioridade</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={300}><BarChart data={priorityData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="prioridade" /><YAxis /><Tooltip /><Bar dataKey="quantidade" fill="hsl(var(--primary))" /></BarChart></ResponsiveContainer></CardContent></Card>
           </div>
-
-          {/* Progress Over Time */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Progresso ao Longo do Tempo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={progressData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="semana" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="concluidas"
-                    stroke="hsl(var(--success))"
-                    strokeWidth={2}
-                    name="Demandas Concluídas"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="iniciadas"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Demandas Iniciadas"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
