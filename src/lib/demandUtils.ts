@@ -14,7 +14,7 @@ export const priorityLabels: Record<DemandPriority, string> = {
 
 export const statusLabels: Record<DemandStatus, string> = {
   todo: "A Fazer",
-  in-progress: "Em Andamento",
+  "in-progress": "Em Andamento",
   testing: "Em Teste",
   done: "Concluído",
 };
