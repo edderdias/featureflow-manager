@@ -181,7 +181,6 @@ const KanbanBoard = () => {
   const findContainer = (id: UniqueIdentifier) => {
     console.log('Id ---> ', id)
     if (columns.includes(id as DemandStatus)) {
-      console.log('DemandStatus ---> ', DemandStatus)
       return id as DemandStatus;
     }
     console.log('Demands ---> ' , demands)
