@@ -164,12 +164,27 @@ const KanbanBoard = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
+    
     const draggedId = active.id as string;
-    const newStatus = columns.includes(over.id as any) ? over.id as DemandStatus : over.data.current?.sortable?.containerId;
+    let newStatus: DemandStatus | undefined;
+
+    // Se soltou sobre uma coluna (id da coluna está no array columns)
+    if (columns.includes(over.id as any)) {
+      newStatus = over.id as DemandStatus;
+    } else {
+      // Se soltou sobre outro card, pega o containerId do card de destino
+      newStatus = over.data.current?.sortable?.containerId as DemandStatus;
+    }
+
     if (newStatus) {
       const demand = demands?.find(d => d.id === draggedId);
       if (demand && demand.status !== newStatus) {
-        saveMutation.mutate({ id: draggedId, status: newStatus, completedAt: newStatus === "done" ? new Date() : undefined });
+        saveMutation.mutate({ 
+          id: draggedId, 
+          status: newStatus, 
+          completed_at: newStatus === "done" ? new Date().toISOString() : null 
+        });
+        toast.success(`Status alterado para: ${statusLabels[newStatus]}`);
       }
     }
     setActiveDragId(null);

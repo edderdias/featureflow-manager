@@ -151,9 +151,9 @@ const DemandList = () => {
 
   const getCalendarItemColor = (type: DemandType) => {
     switch (type) {
-      case "feature": return "bg-primary/10 text-primary border-primary/20";
-      case "bug": return "bg-destructive/10 text-destructive border-destructive/20";
-      case "repair": return "bg-warning/10 text-warning border-warning/20";
+      case "feature": return "bg-primary text-white border-primary";
+      case "bug": return "bg-destructive text-white border-destructive";
+      case "repair": return "bg-warning text-white border-warning";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -196,7 +196,7 @@ const DemandList = () => {
                       key={d.id} 
                       onClick={() => handleEdit(d)} 
                       className={cn(
-                        "text-[10px] p-1 rounded border truncate cursor-pointer hover:brightness-95 transition-all",
+                        "text-[10px] p-1 rounded border truncate cursor-pointer hover:brightness-90 transition-all",
                         getCalendarItemColor(d.type)
                       )}
                     >
