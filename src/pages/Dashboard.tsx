@@ -198,7 +198,7 @@ const KanbanBoard = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    console.log('handleDragEnd ----> ', event, ' - ', active, ' - ', over)
+    console.log('handleDragEnd ----> ')
 
     if (!over) {
       setActiveDragId(null);
