@@ -114,6 +114,19 @@ const KanbanBoard = () => {
   const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
   const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5);
 
+  // Hooks de sensores devem ser chamados no nível superior
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const fetchDemands = async () => {
     if (!user) return [];
     let query = supabase.from("demands").select("*");
@@ -168,11 +181,9 @@ const KanbanBoard = () => {
     const draggedId = active.id as string;
     let newStatus: DemandStatus | undefined;
 
-    // Se soltou sobre uma coluna (id da coluna está no array columns)
     if (columns.includes(over.id as any)) {
       newStatus = over.id as DemandStatus;
     } else {
-      // Se soltou sobre outro card, pega o containerId do card de destino
       newStatus = over.data.current?.sortable?.containerId as DemandStatus;
     }
 
@@ -205,7 +216,7 @@ const KanbanBoard = () => {
             </Suspense>
           </div>
         </div>
-        <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }))} collisionDetection={closestCorners} onDragStart={(e) => setActiveDragId(e.active.id)} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(e) => setActiveDragId(e.active.id)} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {columns.map((status) => {
               const colDemands = filteredDemands.filter(d => d.status === status);

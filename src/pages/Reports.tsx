@@ -1,4 +1,4 @@
-import { useState, Suspense, ReactNode } from "react";
+import { useState, Suspense, ReactNode, lazy } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import { Input } from "@/components/ui/input";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { DateRange } from "react-day-picker";
 import { startOfDay, endOfDay, isWithinInterval, isSameDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-const DemandDialog = import.meta.env.VITE_LOVABLE_TAGGER ? (await import("@/components/DemandDialog")).DemandDialog : (await import("@/components/DemandDialog")).DemandDialog;
+const DemandDialog = lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
 const Reports = () => {
   const { user } = useAuth();
