@@ -183,6 +183,8 @@ const KanbanBoard = () => {
     if (columns.includes(id as DemandStatus)) {
       return id as DemandStatus;
     }
+
+    console.log('Teste ---> ')
     
     const demand = demands?.find((d) => d.id === id);    
     return demand ? demand.status : null;
