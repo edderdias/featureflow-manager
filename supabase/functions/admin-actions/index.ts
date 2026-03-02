@@ -110,7 +110,7 @@ serve(async (req) => {
           email,
           password,
           email_confirm: true,
-          user_metadata: { first_name, last_name, is_dev }
+          user_metadata: { first_name, last_name, is_dev: !!is_dev }
         });
         if (createError) throw createError;
         return new Response(JSON.stringify({ message: "User created", user: newUser.user }), {
@@ -121,7 +121,7 @@ serve(async (req) => {
 
       // Default: Invite
       const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(email, {
-        data: { first_name, last_name, is_dev }
+        data: { first_name, last_name, is_dev: !!is_dev }
       });
       if (inviteError) throw inviteError;
       return new Response(JSON.stringify({ message: "Invitation sent", user: invitedUser.user }), {
@@ -152,7 +152,7 @@ serve(async (req) => {
           last_name, 
           avatar_url, 
           role, 
-          is_dev,
+          is_dev: !!is_dev,
           updated_at: new Date().toISOString() 
         })
         .eq("id", userId);
