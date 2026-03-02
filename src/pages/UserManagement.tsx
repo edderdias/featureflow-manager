@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, User, Mail, Shield, Loader2, Edit, Trash2, CheckCircle2, UserPlus } from "lucide-react";
+import { Plus, User, Mail, Shield, Loader2, Edit, Trash2, CheckCircle2, UserPlus, Code } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { EditUserDialog } from "@/components/EditUserDialog";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export interface UserProfile {
   id: string;
@@ -20,6 +21,7 @@ export interface UserProfile {
   last_name: string | null;
   avatar_url: string | null;
   role: string;
+  is_dev: boolean;
   created_at: string;
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
@@ -32,6 +34,7 @@ const UserManagement = () => {
   const [newLastName, setNewLastName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newIsDev, setNewIsDev] = useState(false);
   const [isDirectRegistration, setIsDirectRegistration] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | undefined>(undefined);
@@ -71,6 +74,7 @@ const UserManagement = () => {
         setNewLastName("");
         setNewEmail("");
         setNewPassword("");
+        setNewIsDev(false);
       }
     },
     onError: (err: any) => {
@@ -118,6 +122,7 @@ const UserManagement = () => {
       first_name: newFirstName.trim(),
       last_name: newLastName.trim(),
       password: newPassword.trim(),
+      is_dev: newIsDev,
       action: isDirectRegistration ? "create" : "invite"
     });
   };
@@ -166,6 +171,12 @@ const UserManagement = () => {
                 </div>
               )}
             </div>
+            <div className="flex items-center space-x-2 mb-4">
+              <Checkbox id="newIsDev" checked={newIsDev} onCheckedChange={(checked) => setNewIsDev(!!checked)} />
+              <Label htmlFor="newIsDev" className="flex items-center gap-1 cursor-pointer">
+                <Code className="h-4 w-4" /> Desenvolvedor (Aparecerá na lista de responsáveis)
+              </Label>
+            </div>
             <Button onClick={handleAddUser} disabled={userActionMutation.isPending} className="w-full md:w-auto">
               {userActionMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : (isDirectRegistration ? <UserPlus className="mr-2 h-4 w-4" /> : <Mail className="mr-2 h-4 w-4" />)}
               {isDirectRegistration ? "Cadastrar Agora" : "Enviar Convite"}
@@ -185,6 +196,7 @@ const UserManagement = () => {
                   <TableHead>E-mail</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Papel</TableHead>
+                  <TableHead>Dev</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -203,6 +215,9 @@ const UserManagement = () => {
                       )}
                     </TableCell>
                     <TableCell><Badge variant="outline">{u.role}</Badge></TableCell>
+                    <TableCell>
+                      {u.is_dev ? <Badge variant="default" className="bg-blue-600">Sim</Badge> : <Badge variant="secondary">Não</Badge>}
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       {!u.email_confirmed_at && (
                         <Button variant="outline" size="sm" onClick={() => handleConfirmUser(u.id)} title="Confirmar Manualmente">

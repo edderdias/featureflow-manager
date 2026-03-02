@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Demand, DemandPriority, DemandStatus, DemandType, SystemType, ChecklistItem, Attachment, StackType } from "@/types/demand";
-import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText, Loader2 } from "lucide-react";
+import { Plus, Paperclip, Link2, CheckSquare, X, Upload, FileText, Loader2, User as UserIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,13 @@ interface Tag {
   created_at: string;
 }
 
+interface DevUser {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+}
+
 export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: DemandDialogProps) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -50,6 +57,29 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       return data;
     },
     enabled: !!user,
+  });
+
+  // Busca lista de desenvolvedores
+  const { data: devUsers, isLoading: isLoadingDevs } = useQuery<DevUser[]>({
+    queryKey: ["dev-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .eq("is_dev", true);
+      
+      if (error) throw error;
+      
+      // Como a tabela profiles não tem o email, e não podemos acessar auth.users diretamente,
+      // vamos retornar apenas os nomes. Se precisar do email, teria que vir via Edge Function.
+      return data.map(d => ({
+        id: d.id,
+        first_name: d.first_name,
+        last_name: d.last_name,
+        email: "" // Placeholder
+      }));
+    },
+    enabled: open,
   });
 
   const currentUserName = profileData?.first_name || profileData?.last_name
@@ -82,7 +112,7 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
           status: "todo",
           system: "toqweb",
           stack: "none",
-          responsible: currentUserName,
+          responsible: "", // Inicia vazio para forçar seleção
           checklist: [],
           attachments: [],
           tags: [],
@@ -158,7 +188,6 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     return () => window.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-  // Alterado a chave para "tags-full" para evitar colisão com as páginas que usam apenas nomes
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
     queryKey: ["tags-full", user?.id],
     queryFn: async () => {
@@ -219,6 +248,10 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     if (!formData.status) {
       setStatusError("O status da demanda é obrigatório.");
       toast.error("Por favor, selecione um status para a demanda.");
+      return;
+    }
+    if (!formData.responsible) {
+      toast.error("O responsável é obrigatório.");
       return;
     }
     
@@ -465,12 +498,24 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="responsible">Responsável *</Label>
-                <Input
-                  id="responsible"
-                  value={formData.responsible || ""}
-                  onChange={(e) => setFormData({ ...formData, responsible: e.target.value })}
-                  placeholder="Nome do responsável"
-                />
+                <Select
+                  value={formData.responsible}
+                  onValueChange={(value) => setFormData({ ...formData, responsible: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingDevs ? "Carregando..." : "Selecione um dev"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {devUsers?.map((dev) => (
+                      <SelectItem key={dev.id} value={`${dev.first_name || ''} ${dev.last_name || ''}`.trim()}>
+                        {`${dev.first_name || ''} ${dev.last_name || ''}`.trim()}
+                      </SelectItem>
+                    ))}
+                    {devUsers?.length === 0 && (
+                      <SelectItem value="none" disabled>Nenhum desenvolvedor cadastrado</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

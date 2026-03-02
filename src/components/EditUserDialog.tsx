@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserProfile } from "@/pages/UserManagement"; // Importar a interface UserProfile
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserProfile } from "@/pages/UserManagement";
 
 interface EditUserDialogProps {
   user: UserProfile;
-  onSave: (updatedUser: Partial<UserProfile> & { password?: string }) => void; // Adicionado 'password'
+  onSave: (updatedUser: Partial<UserProfile> & { password?: string }) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -19,8 +20,9 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
     last_name: user.last_name || "",
     avatar_url: user.avatar_url || "",
     role: user.role || "user",
+    is_dev: user.is_dev || false,
   });
-  const [newPassword, setNewPassword] = useState(""); // Estado para a nova senha
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -29,8 +31,9 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
         last_name: user.last_name || "",
         avatar_url: user.avatar_url || "",
         role: user.role || "user",
+        is_dev: user.is_dev || false,
       });
-      setNewPassword(""); // Limpa a senha ao abrir o diálogo
+      setNewPassword("");
     }
   }, [user, open]);
 
@@ -38,7 +41,7 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
     onSave({ 
       id: user.id, 
       ...formData, 
-      password: newPassword || undefined // Envia a senha apenas se não estiver vazia
+      password: newPassword || undefined
     });
     onOpenChange(false);
   };
@@ -58,12 +61,12 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
               id="email"
               value={user.email || ""}
               readOnly
-              className="col-span-3"
+              className="col-span-3 bg-muted"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="first_name" className="text-right">
-              Primeiro Nome
+              Nome
             </Label>
             <Input
               id="first_name"
@@ -84,17 +87,6 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="avatar_url" className="text-right">
-              URL do Avatar
-            </Label>
-            <Input
-              id="avatar_url"
-              value={formData.avatar_url || ""}
-              onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">
               Papel
             </Label>
@@ -111,6 +103,17 @@ export const EditUserDialog = ({ user, onSave, open, onOpenChange }: EditUserDia
                 <SelectItem value="technician">Técnico</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Dev</Label>
+            <div className="col-span-3 flex items-center space-x-2">
+              <Checkbox 
+                id="is_dev" 
+                checked={formData.is_dev} 
+                onCheckedChange={(checked) => setFormData({ ...formData, is_dev: !!checked })} 
+              />
+              <Label htmlFor="is_dev" className="text-xs text-muted-foreground">Marcar como desenvolvedor</Label>
+            </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="new_password" className="text-right">

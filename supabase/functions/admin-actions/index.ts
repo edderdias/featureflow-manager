@@ -77,6 +77,7 @@ serve(async (req) => {
           last_name: userProfile?.last_name || null,
           avatar_url: userProfile?.avatar_url || null,
           role: userProfile?.role || "user",
+          is_dev: userProfile?.is_dev || false,
           created_at: user.created_at,
           email_confirmed_at: user.email_confirmed_at,
           last_sign_in_at: user.last_sign_in_at,
@@ -90,7 +91,7 @@ serve(async (req) => {
     } 
     
     if (req.method === "POST") {
-      const { email, first_name, last_name, password, action, userId } = await req.json();
+      const { email, first_name, last_name, password, action, userId, is_dev } = await req.json();
 
       if (action === "confirm" && userId) {
         const { error: confirmError } = await supabaseAdminClient.auth.admin.updateUserById(userId, {
@@ -109,7 +110,7 @@ serve(async (req) => {
           email,
           password,
           email_confirm: true,
-          user_metadata: { first_name, last_name }
+          user_metadata: { first_name, last_name, is_dev }
         });
         if (createError) throw createError;
         return new Response(JSON.stringify({ message: "User created", user: newUser.user }), {
@@ -120,7 +121,7 @@ serve(async (req) => {
 
       // Default: Invite
       const { data: invitedUser, error: inviteError } = await supabaseAdminClient.auth.admin.inviteUserByEmail(email, {
-        data: { first_name, last_name }
+        data: { first_name, last_name, is_dev }
       });
       if (inviteError) throw inviteError;
       return new Response(JSON.stringify({ message: "Invitation sent", user: invitedUser.user }), {
@@ -140,13 +141,20 @@ serve(async (req) => {
     }
 
     if (req.method === "PATCH") {
-      const { userId, password, first_name, last_name, avatar_url, role } = await req.json();
+      const { userId, password, first_name, last_name, avatar_url, role, is_dev } = await req.json();
       if (password) {
         await supabaseAdminClient.auth.admin.updateUserById(userId, { password });
       }
       const { error: profileUpdateError } = await supabaseAdminClient
         .from("profiles")
-        .update({ first_name, last_name, avatar_url, role, updated_at: new Date().toISOString() })
+        .update({ 
+          first_name, 
+          last_name, 
+          avatar_url, 
+          role, 
+          is_dev,
+          updated_at: new Date().toISOString() 
+        })
         .eq("id", userId);
       if (profileUpdateError) throw profileUpdateError;
       return new Response(JSON.stringify({ message: "User updated" }), {
