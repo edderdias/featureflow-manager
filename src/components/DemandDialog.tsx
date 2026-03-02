@@ -158,8 +158,9 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
     return () => window.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
+  // Alterado a chave para "tags-full" para evitar colisão com as páginas que usam apenas nomes
   const { data: existingTags, isLoading: isLoadingTags } = useQuery<Tag[], Error>({
-    queryKey: ["tags", user?.id],
+    queryKey: ["tags-full", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
@@ -184,7 +185,8 @@ export const DemandDialog = ({ demand, onSave, trigger, open, onOpenChange }: De
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({ queryKey: ["tags-full"] });
+      queryClient.invalidateQueries({ queryKey: ["tags-names"] });
       toast.success("Nova tag criada no sistema!");
     },
     onError: (err) => {

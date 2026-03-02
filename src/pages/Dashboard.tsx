@@ -209,7 +209,7 @@ const Dashboard = () => {
   });
 
   const { data: tags } = useQuery({
-    queryKey: ["tags", user?.id],
+    queryKey: ["tags-names", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from("tags").select("name");
       if (error) throw error;
