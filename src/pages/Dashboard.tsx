@@ -1,177 +1,34 @@
-import React, { useState, Suspense, useMemo } from "react";
-import { DemandStatus, Demand } from "@/types/demand";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { statusLabels, getPriorityColor, getTypeColor, priorityLabels, typeLabels } from "@/lib/demandUtils";
-import { User, Calendar, CheckSquare, Paperclip, Plus, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import React, { Suspense, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/integrations/supabase/auth";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Demand } from "@/types/demand";
+import { StatsCard } from "@/components/StatsCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-import {
-  DndContext,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverlay,
-  UniqueIdentifier,
-  useDroppable,
-  useDndContext,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, Legend 
+} from "recharts";
+import { 
+  LayoutDashboard, ListTodo, CheckCircle2, Clock, AlertCircle, 
+  Plus, Loader2, ArrowRight 
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { statusLabels, getStatusColor, typeLabels, priorityLabels } from "@/lib/demandUtils";
+import { toast } from "sonner";
 
 const DemandDialog = React.lazy(() => import("@/components/DemandDialog").then(m => ({ default: m.DemandDialog })));
 
-interface DraggableDemandCardProps {
-  demand: Demand;
-  onEdit: (demand: Demand) => void;
-}
-
-const DraggableDemandCard = ({ demand, onEdit }: DraggableDemandCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: demand.id });
-  const style = { 
-    transform: CSS.Transform.toString(transform), 
-    transition, 
-    zIndex: isDragging ? 100 : 'auto', 
-    opacity: isDragging ? 0.5 : 1 
-  };
-  
-  const completedItems = demand.checklist?.filter((item) => item.completed).length || 0;
-  const totalItems = demand.checklist?.length || 0;
-  const checklistProgress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card onDoubleClick={() => onEdit(demand)} className="cursor-grab hover:shadow-lg transition-all duration-300 group mb-3 overflow-hidden">
-        {demand.tags && demand.tags.length > 0 && (
-          <div className="px-3 pt-2 pb-0">
-            <div className="flex flex-wrap gap-1">
-              {demand.tags.slice(0, 2).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-[9px] h-4 px-1 truncate max-w-[80px]">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        <CardHeader className="p-3 pb-2">
-          <CardTitle className="text-sm font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2 break-words">
-            {demand.title}
-          </CardTitle>
-          <div className="flex flex-wrap gap-1 pt-1">
-            <Badge variant={getPriorityColor(demand.priority) as any} className="text-[9px] h-4 px-1">
-              {priorityLabels[demand.priority]}
-            </Badge>
-            <Badge variant={getTypeColor(demand.type) as any} className="text-[9px] h-4 px-1">
-              {typeLabels[demand.type]}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 space-y-2">
-          <p className="text-xs text-muted-foreground line-clamp-2 break-words">
-            {demand.description}
-          </p>
-          {demand.checklist && demand.checklist.length > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <CheckSquare className="h-2.5 w-2.5" /> {completedItems}/{totalItems}
-                </span>
-                <span>{Math.round(checklistProgress)}%</span>
-              </div>
-              <Progress value={checklistProgress} className="h-1" />
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-            <div className="flex items-center gap-1 truncate max-w-[100px]">
-              <User className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{demand.responsible}</span>
-            </div>
-            {demand.dueDate && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-2.5 w-2.5 shrink-0" />
-                <span>{format(demand.dueDate, "dd/MM", { locale: ptBR })}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-border/50">
-            <Badge variant="outline" className="text-[9px] font-mono h-4 px-1">
-              {(demand.system || "N/A").toUpperCase()}
-            </Badge>
-            <div className="flex items-center gap-2">
-              {demand.storyPoints && demand.storyPoints > 0 && (
-                <span className="text-[9px] font-medium text-muted-foreground">{demand.storyPoints} pts</span>
-              )}
-              {demand.attachments && demand.attachments.length > 0 && (
-                <Paperclip className="h-2.5 w-2.5 text-muted-foreground" />
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const KanbanColumn = ({ id, title, demands, totalDemandsCount, onEdit, showLoadMore, onLoadMore }: any) => {
-  const { setNodeRef } = useDroppable({ id });
-  const { active } = useDndContext();
-  const isDraggingOver = active && active.id !== id;
-
-  return (
-    <div ref={setNodeRef} className={cn(
-      "flex flex-col bg-muted/30 p-3 rounded-lg shadow-sm min-h-[200px] w-full",
-      isDraggingOver && "border-2 border-dashed border-primary/50 bg-primary/5"
-    )}>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
-        <Badge variant="secondary" className="text-[10px] h-5">{totalDemandsCount}</Badge>
-      </div>
-      <div className="space-y-2 flex-1">
-        <SortableContext items={demands.map((d: any) => d.id)} id={id}>
-          {demands.map((demand: any) => (
-            <DraggableDemandCard key={demand.id} demand={demand} onEdit={onEdit} />
-          ))}
-        </SortableContext>
-      </div>
-      {showLoadMore && (
-        <Button variant="ghost" size="sm" className="w-full mt-2 text-[10px] h-7" onClick={onLoadMore}>
-          Ver mais
-        </Button>
-      )}
-    </div>
-  );
-};
-
-const columns: DemandStatus[] = ["todo", "in-progress", "testing", "done"];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const Dashboard = () => {
   const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
-  
-  const [activeDragId, setActiveDragId] = useState<UniqueIdentifier | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingDemand, setEditingDemand] = useState<Demand | undefined>(undefined);
-  const [visibleDoneDemandsCount, setVisibleDoneDemandsCount] = useState(5);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const fetchDemands = async () => {
     if (!user) return [];
@@ -184,10 +41,7 @@ const Dashboard = () => {
       createdAt: new Date(d.created_at),
       updatedAt: new Date(d.updated_at),
       dueDate: d.due_date ? new Date(d.due_date) : undefined,
-      storyPoints: d.story_points,
       completedAt: d.completed_at ? new Date(d.completed_at) : undefined,
-      creatorName: d.creator_name,
-      creatorEmail: d.creator_email,
     })) as Demand[];
   };
 
@@ -199,43 +53,74 @@ const Dashboard = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (demandData: Partial<Demand>) => {
-      if (!user) throw new Error("Usuário não autenticado");
-      const { id, dueDate, createdAt, updatedAt, completedAt, storyPoints, creatorName, creatorEmail, ...rest } = demandData;
-      const payload: any = { ...rest, updated_at: new Date().toISOString() };
-      if (dueDate !== undefined) payload.due_date = dueDate ? (dueDate instanceof Date ? dueDate.toISOString() : dueDate) : null;
-      if (completedAt !== undefined) payload.completed_at = completedAt ? (completedAt instanceof Date ? completedAt.toISOString() : completedAt) : null;
-      if (storyPoints !== undefined) payload.story_points = storyPoints;
-      if (creatorName !== undefined) payload.creator_name = creatorName;
-      if (creatorEmail !== undefined) payload.creator_email = creatorEmail;
-
+      const { id, ...rest } = demandData;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
       if (id) {
         const { error } = await supabase.from("demands").update(payload).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("demands").insert({ ...payload, user_id: user.id, created_at: new Date().toISOString() });
+        const { error } = await supabase.from("demands").insert({ ...payload, user_id: user?.id, created_at: new Date().toISOString() });
         if (error) throw error;
       }
     },
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey: ["demands"] }); 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["demands"] });
       setIsDialogOpen(false);
-      toast.success("Demanda atualizada!");
+      toast.success("Demanda salva com sucesso!");
     },
   });
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) { setActiveDragId(null); return; }
-    const activeId = active.id as string;
-    const overId = over.id;
-    const activeContainer = demands?.find(d => d.id === activeId)?.status;
-    const overContainer = columns.includes(overId as DemandStatus) ? overId as DemandStatus : demands?.find(d => d.id === overId)?.status;
-    
-    if (activeContainer && overContainer && activeContainer !== overContainer) {
-      saveMutation.mutate({ id: activeId, status: overContainer, completedAt: overContainer === "done" ? new Date().toISOString() : null });
-    }
-    setActiveDragId(null);
-  };
+  // Cálculos para os gráficos
+  const stats = useMemo(() => {
+    if (!demands) return null;
+    const total = demands.length;
+    const done = demands.filter(d => d.status === "done").length;
+    const inProgress = demands.filter(d => d.status === "in-progress").length;
+    const todo = demands.filter(d => d.status === "todo").length;
+    const testing = demands.filter(d => d.status === "testing").length;
+
+    // Por Sistema
+    const bySystem = demands.reduce((acc: any, d) => {
+      const sys = (d.system || "N/A").toUpperCase();
+      acc[sys] = (acc[sys] || 0) + 1;
+      return acc;
+    }, {});
+    const systemData = Object.keys(bySystem).map(name => ({ name, value: bySystem[name] }));
+
+    // Por Tipo
+    const byType = demands.reduce((acc: any, d) => {
+      const type = typeLabels[d.type] || d.type;
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+    const typeData = Object.keys(byType).map(name => ({ name, value: byType[name] }));
+
+    // Por Responsável
+    const byResponsible = demands.reduce((acc: any, d) => {
+      const resp = d.responsible || "Não Atribuído";
+      acc[resp] = (acc[resp] || 0) + 1;
+      return acc;
+    }, {});
+    const responsibleData = Object.keys(byResponsible)
+      .map(name => ({ name, value: byResponsible[name] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    // Por Stack
+    const byStack = demands.reduce((acc: any, d) => {
+      const stack = (d.stack || "none").toUpperCase();
+      acc[stack] = (acc[stack] || 0) + 1;
+      return acc;
+    }, {});
+    const stackData = Object.keys(byStack).map(name => ({ name, value: byStack[name] }));
+
+    // Últimas 5 demandas
+    const latestDemands = [...demands]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 5);
+
+    return { total, done, inProgress, todo, testing, systemData, typeData, responsibleData, stackData, latestDemands };
+  }, [demands]);
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
@@ -244,17 +129,16 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Board Kanban</h1>
-            <p className="text-muted-foreground">Visualize e organize o fluxo de trabalho</p>
+            <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">Visão geral do sistema e indicadores de desempenho</p>
           </div>
           <Suspense fallback={<Button size="lg" disabled>Carregando...</Button>}>
             <DemandDialog 
-              demand={editingDemand} 
               onSave={saveMutation.mutate} 
               open={isDialogOpen} 
               onOpenChange={setIsDialogOpen} 
               trigger={
-                <Button size="lg" className="gap-2" onClick={() => { setEditingDemand(undefined); setIsDialogOpen(true); }}>
+                <Button size="lg" className="gap-2" onClick={() => setIsDialogOpen(true)}>
                   <Plus className="h-5 w-5" /> Nova Demanda
                 </Button>
               } 
@@ -262,30 +146,139 @@ const Dashboard = () => {
           </Suspense>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={(e) => setActiveDragId(e.active.id)} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {columns.map((status) => {
-              const colDemands = (demands || []).filter(d => d.status === status);
-              const display = status === "done" ? colDemands.slice(0, visibleDoneDemandsCount) : colDemands;
-              return (
-                <KanbanColumn 
-                  key={status} id={status} title={statusLabels[status]} 
-                  demands={display} totalDemandsCount={colDemands.length} 
-                  onEdit={(d: Demand) => { setEditingDemand(d); setIsDialogOpen(true); }} 
-                  showLoadMore={status === "done" && colDemands.length > visibleDoneDemandsCount} 
-                  onLoadMore={() => setVisibleDoneDemandsCount(v => v + 5)} 
-                />
-              );
-            })}
-          </div>
-          <DragOverlay>
-            {activeDragId ? (
-              <div className="w-[280px]">
-                <DraggableDemandCard demand={demands!.find(d => d.id === activeDragId)!} onEdit={() => {}} />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        {/* Cards de Resumo */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatsCard title="Total de Demandas" value={stats?.total || 0} icon={ListTodo} />
+          <StatsCard title="Em Andamento" value={stats?.inProgress || 0} icon={Clock} />
+          <StatsCard title="Em Teste" value={stats?.testing || 0} icon={AlertCircle} />
+          <StatsCard title="Concluídas" value={stats?.done || 0} icon={CheckCircle2} />
+        </div>
+
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Demandas por Sistema */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Demandas por Sistema</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.systemData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" fontSize={12} />
+                  <YAxis fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Demandas por Tipo */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Distribuição por Tipo</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats?.typeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stats?.typeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Demandas por Responsável */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Top 5 Responsáveis</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.responsibleData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" fontSize={12} />
+                  <YAxis dataKey="name" type="category" fontSize={10} width={100} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Demandas por Stack */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Demandas por Stack</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats?.stackData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" fontSize={12} />
+                  <YAxis fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Últimas Demandas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-xl">Últimas Demandas Criadas</CardTitle>
+            <Link to="/demands">
+              <Button variant="ghost" size="sm" className="gap-2">
+                Ver todas <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats?.latestDemands.map((demand) => (
+                <div key={demand.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-sm line-clamp-1">{demand.title}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{format(demand.createdAt, "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      <span>•</span>
+                      <span className="font-medium">{(demand.system || "N/A").toUpperCase()}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={getStatusColor(demand.status) as any} className="text-[10px]">
+                      {statusLabels[demand.status]}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] hidden sm:flex">
+                      {demand.responsible}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {stats?.latestDemands.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma demanda encontrada.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
